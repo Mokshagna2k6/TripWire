@@ -1,0 +1,40 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: tripwire
+      POSTGRES_PASSWORD: tripwire
+      POSTGRES_DB: tripwire
+    ports:
+      - "5432:5432"
+    volumes:
+      - tripwire_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tripwire"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  server:
+    build: ./server
+    ports:
+      - "4000:4000"
+    environment:
+      DATABASE_URL: postgresql://tripwire:tripwire@postgres:5432/tripwire
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      PORT: 4000
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  client:
+    build: ./client
+    ports:
+      - "5173:5173"
+    environment:
+      VITE_API_URL: http://server:4000
+    depends_on:
+      - server
+
+volumes:
+  tripwire_pg_data:
