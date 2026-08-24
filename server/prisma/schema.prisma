@@ -1,0 +1,104 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ReviewDecision {
+  ALLOW
+  BLOCK
+}
+
+enum FeedbackClassification {
+  false_positive
+  false_negative
+  true_positive
+  true_negative
+}
+
+model Policy {
+  id             String   @id @default(cuid())
+  name           String   @unique
+  domain         String
+  geography      String
+  riskTolerance  String
+  thresholds     Json
+  hardGates      Json
+  allowedActions Json
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  auditTraces AuditTrace[]
+}
+
+model AuditTrace {
+  id                     String   @id @default(cuid())
+  requestId              String   @unique
+  policyId               String
+  policy                 Policy   @relation(fields: [policyId], references: [id])
+  model                  String
+  promptMeta             Json
+  rawResponse            String
+  structuredRepresentation Json
+  metrics                Json
+  evidence               Json
+  judgeOutput            Json?
+  riskLevel              String
+  action                 String
+  regenerationCount      Int      @default(0)
+  latencyMs              Int
+  tokens                 Json
+  humanReviewId          String?  @unique
+  humanReview            HumanReview?
+  finalOutcome           String
+  createdAt              DateTime @default(now())
+
+  feedback FeedbackRecord?
+}
+
+model HumanReview {
+  id           String    @id @default(cuid())
+  auditTraceId String    @unique
+  auditTrace   AuditTrace @relation(fields: [auditTraceId], references: [id])
+  risk         String
+  reason       String
+  response     String
+  evidence     Json
+  metrics      Json
+  decision     ReviewDecision?
+  reviewedAt   DateTime?
+  createdAt    DateTime  @default(now())
+}
+
+model FeedbackRecord {
+  id             String                 @id @default(cuid())
+  auditTraceId   String                 @unique
+  auditTrace     AuditTrace             @relation(fields: [auditTraceId], references: [id])
+  systemAction   String
+  humanDecision  String
+  classification FeedbackClassification
+  createdAt      DateTime               @default(now())
+}
+
+model EvidenceDocument {
+  id        String   @id @default(cuid())
+  domain    String
+  title     String
+  source    String
+  authority String
+  createdAt DateTime @default(now())
+
+  chunks EvidenceChunk[]
+}
+
+model EvidenceChunk {
+  id         String   @id @default(cuid())
+  documentId String
+  document   EvidenceDocument @relation(fields: [documentId], references: [id])
+  text       String
+  embedding  Json
+  createdAt  DateTime @default(now())
+}
