@@ -261,20 +261,6 @@ export default function Inspector() {
   }
 
   const canSubmit = input.trim().length > 0 || attachments.length > 0;
-
-  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
-  }
-
-  function handleCopy(id: string, text: string) {
-    navigator.clipboard.writeText(text);
-    setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 2000);
-  }
-
   const hasText = input.trim().length > 0;
 
   return (
