@@ -36,7 +36,9 @@ export async function runPipeline(req, provider) {
 
   const optimizedPrompt = optimizeContext(prompt, []); // ponytail: no evidence pre-retrieval before first call for MVP; evidence is fetched during verification against the response itself
 
-  const first = await provider.generate(optimizedPrompt);
+  // Attachments only go on the initial call — regenerate retries are corrective text
+  // feedback about the response already given, not a fresh look at the same file.
+  const first = await provider.generate(optimizedPrompt, { attachments: req.attachments });
   responseText = first.text;
   totalInputTokens += first.tokens.input;
   totalOutputTokens += first.tokens.output;

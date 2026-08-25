@@ -3,9 +3,18 @@ import { z } from "zod";
 import { runPipeline } from "../pipeline.js";
 import { logger } from "../logger.js";
 
-const bodySchema = z.object({
+// Mime types Gemini actually understands as an inlineData part. doc/docx and other office
+// formats aren't in this list — Gemini's inlineData doesn't parse them, so those still fall
+// back to filename-only context on the client rather than silently sending bytes it can't read.
+const SUPPORTED_ATTACHMENT_MIME_TYPES = /^(image\/(png|jpeg|jpg|webp|heic|heif)|application\/pdf|text\/(plain|csv))$/;
+
+export const bodySchema = z.object({
   domain: z.string().min(1),
   prompt: z.string().min(1),
+  attachments: z
+    .array(z.object({ mimeType: z.string().regex(SUPPORTED_ATTACHMENT_MIME_TYPES), data: z.string().min(1) }))
+    .max(5)
+    .optional(),
   expectedFormat: z
     .object({
       format: z.literal("json").optional(),
