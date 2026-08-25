@@ -1,6 +1,6 @@
 export const MAX_REGENERATE_RETRIES = 2;
 
-/** Corrective feedback prompt for the REGENERATE loop: tells Gemini exactly what was wrong. */
+/** Corrective feedback prompt for the REGENERATE loop: tells the model exactly what was wrong. */
 export function buildCorrectiveFeedbackPrompt(originalPrompt, priorResponse, reasons) {
   return [
     `Your previous response failed verification for these specific reasons:`,
