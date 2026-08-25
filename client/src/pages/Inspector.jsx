@@ -3,7 +3,6 @@ import {
   ArrowUp,
   ShieldCheck,
   ShieldAlert,
-  XCircle,
   Scale,
   BrainCircuit,
   Copy,
@@ -15,20 +14,16 @@ import {
   CornerDownRight,
   Globe,
   Paperclip,
-  Image as ImageIcon,
   FileText,
   X,
 } from "lucide-react";
-import { api, type GenerateResult } from "../api.js";
-import { Badge } from "../components/ui.js";
+import { api } from "../api.js";
+import { Badge } from "../components/ui.jsx";
 import {
   loadSessions,
   saveSessions,
   getActiveSessionId,
   setActiveSessionId,
-  type ChatMessage,
-  type ChatSession,
-  type MediaAttachment,
 } from "../chatStorage.js";
 
 const DOMAINS = [
@@ -41,18 +36,18 @@ const DOMAINS = [
 export default function Inspector() {
   const [domain, setDomain] = useState("general");
   const [input, setInput] = useState("");
-  const [attachments, setAttachments] = useState<MediaAttachment[]>([]);
+  const [attachments, setAttachments] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [expandedTraceId, setExpandedTraceId] = useState<string | null>(null);
-  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [messages, setMessages] = useState([]);
+  const [expandedTraceId, setExpandedTraceId] = useState(null);
+  const [copiedId, setCopiedId] = useState(null);
 
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const messagesEndRef = useRef(null);
+  const textareaRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   // Load active session on mount or switch
-  function loadCurrentSession(targetId?: string | null) {
+  function loadCurrentSession(targetId) {
     const activeId = targetId !== undefined ? targetId : getActiveSessionId();
     if (!activeId) {
       setMessages([]);
@@ -78,9 +73,8 @@ export default function Inspector() {
       setExpandedTraceId(null);
     }
 
-    function handleSwitchSession(e: Event) {
-      const customEvent = e as CustomEvent<string | null>;
-      loadCurrentSession(customEvent.detail);
+    function handleSwitchSession(e) {
+      loadCurrentSession(e.detail);
       setAttachments([]);
       setExpandedTraceId(null);
     }
@@ -107,7 +101,7 @@ export default function Inspector() {
     }
   }, [input]);
 
-  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleFileSelect(e) {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
@@ -121,7 +115,7 @@ export default function Inspector() {
               name: file.name,
               type: file.type || "application/octet-stream",
               size: file.size,
-              dataUrl: reader.result as string,
+              dataUrl: reader.result,
             },
           ]);
         }
@@ -134,7 +128,7 @@ export default function Inspector() {
     }
   }
 
-  function handleRemoveAttachment(index: number) {
+  function handleRemoveAttachment(index) {
     setAttachments((prev) => prev.filter((_, i) => i !== index));
   }
 
@@ -151,7 +145,7 @@ export default function Inspector() {
       textareaRef.current.style.height = "auto";
     }
 
-    const userMsg: ChatMessage = {
+    const userMsg = {
       id: Date.now().toString(),
       role: "user",
       content: userPrompt,
@@ -171,7 +165,7 @@ export default function Inspector() {
     if (!activeId) {
       activeId = Date.now().toString();
       const sessionTitle = userPrompt.length > 35 ? `${userPrompt.substring(0, 35)}…` : userPrompt;
-      const newSession: ChatSession = {
+      const newSession = {
         id: activeId,
         title: sessionTitle,
         domain: currentDomain,
@@ -196,7 +190,7 @@ export default function Inspector() {
         : userPrompt;
 
       const res = await api.generate(currentDomain, combinedPrompt);
-      const assistantMsg: ChatMessage = {
+      const assistantMsg = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
         content: res.response ?? "",
@@ -221,7 +215,7 @@ export default function Inspector() {
       );
       saveSessions(sessions);
     } catch (e) {
-      const errorMsg: ChatMessage = {
+      const errorMsg = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
         content: "",
@@ -247,21 +241,20 @@ export default function Inspector() {
     }
   }
 
-  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+  function handleKeyDown(e) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSend();
     }
   }
 
-  function handleCopy(id: string, text: string) {
+  function handleCopy(id, text) {
     navigator.clipboard.writeText(text);
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 2000);
   }
 
   const canSubmit = input.trim().length > 0 || attachments.length > 0;
-  const hasText = input.trim().length > 0;
 
   return (
     <div className="flex flex-col h-full w-full justify-between overflow-hidden relative">
@@ -361,7 +354,7 @@ export default function Inspector() {
                             </span>
                             {msg.result.response && (
                               <button
-                                onClick={() => handleCopy(msg.id, msg.result!.response!)}
+                                onClick={() => handleCopy(msg.id, msg.result.response)}
                                 className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
                                 title="Copy response"
                               >

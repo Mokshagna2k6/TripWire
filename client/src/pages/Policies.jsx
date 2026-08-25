@@ -1,28 +1,12 @@
 import { useEffect, useState } from "react";
 import { Sliders, ShieldAlert, Check, RefreshCw, Layers } from "lucide-react";
 import { api } from "../api.js";
-import { Card, Badge, Button } from "../components/ui.js";
-
-interface ThresholdRule {
-  metric: string;
-  operator: string;
-  value: number;
-  action: string;
-}
-
-interface Policy {
-  id: string;
-  name: string;
-  domain: string;
-  riskTolerance: string;
-  thresholds: ThresholdRule[];
-  hardGates: Record<string, number>;
-}
+import { Card, Badge, Button } from "../components/ui.jsx";
 
 export default function Policies() {
-  const [policies, setPolicies] = useState<Policy[]>([]);
-  const [editing, setEditing] = useState<Record<string, string>>({});
-  const [savedKey, setSavedKey] = useState<string | null>(null);
+  const [policies, setPolicies] = useState([]);
+  const [editing, setEditing] = useState({});
+  const [savedKey, setSavedKey] = useState(null);
   const [loading, setLoading] = useState(true);
 
   function load() {
@@ -35,7 +19,7 @@ export default function Policies() {
 
   useEffect(load, []);
 
-  async function saveThreshold(policy: Policy, index: number, newValue: number) {
+  async function saveThreshold(policy, index, newValue) {
     const key = `${policy.id}:th:${index}`;
     const thresholds = policy.thresholds.map((t, i) => (i === index ? { ...t, value: newValue } : t));
     await api.updatePolicy(policy.id, { thresholds });
@@ -44,7 +28,7 @@ export default function Policies() {
     load();
   }
 
-  async function saveHardGate(policy: Policy, metric: string, newValue: number) {
+  async function saveHardGate(policy, metric, newValue) {
     const key = `${policy.id}:hg:${metric}`;
     await api.updatePolicy(policy.id, { hardGates: { ...policy.hardGates, [metric]: newValue } });
     setSavedKey(key);

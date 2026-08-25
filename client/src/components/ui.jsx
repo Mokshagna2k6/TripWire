@@ -1,6 +1,4 @@
-import type { PropsWithChildren, ButtonHTMLAttributes } from "react";
-
-export function Card({ children, className = "" }: PropsWithChildren<{ className?: string }>) {
+export function Card({ children, className = "" }) {
   return (
     <div className={`rounded-xl border border-slate-200/80 bg-white p-5 shadow-xs transition-all ${className}`}>
       {children}
@@ -8,7 +6,7 @@ export function Card({ children, className = "" }: PropsWithChildren<{ className
   );
 }
 
-const BADGE_STYLES: Record<string, { bg: string; dot: string }> = {
+const BADGE_STYLES = {
   // Risk levels
   low: { bg: "bg-emerald-50 text-emerald-700 border-emerald-200/80", dot: "bg-emerald-500" },
   medium: { bg: "bg-amber-50 text-amber-700 border-amber-200/80", dot: "bg-amber-500" },
@@ -30,7 +28,7 @@ const BADGE_STYLES: Record<string, { bg: string; dot: string }> = {
   default: { bg: "bg-slate-100 text-slate-700 border-slate-200", dot: "bg-slate-400" },
 };
 
-export function Badge({ children, tone, showDot = false }: PropsWithChildren<{ tone?: string; showDot?: boolean }>) {
+export function Badge({ children, tone, showDot = false }) {
   const style = (tone && BADGE_STYLES[tone]) ? BADGE_STYLES[tone] : BADGE_STYLES.default;
   return (
     <span className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-xs font-medium ${style.bg}`}>
@@ -40,18 +38,13 @@ export function Badge({ children, tone, showDot = false }: PropsWithChildren<{ t
   );
 }
 
-interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: "primary" | "secondary" | "destructive" | "success" | "outline";
-  size?: "sm" | "md" | "lg";
-}
-
 export function Button({
   className = "",
   variant = "primary",
   size = "md",
   children,
   ...props
-}: ButtonProps) {
+}) {
   const variantStyles = {
     primary: "bg-slate-900 text-white hover:bg-slate-800 shadow-xs border border-slate-900 active:scale-[0.99]",
     secondary: "bg-slate-100 text-slate-800 hover:bg-slate-200 border border-slate-200/80",
@@ -76,7 +69,7 @@ export function Button({
   );
 }
 
-export function Table({ headers, rows }: { headers: string[]; rows: (string | number)[][] }) {
+export function Table({ headers, rows }) {
   return (
     <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
       <table className="w-full text-left text-sm">

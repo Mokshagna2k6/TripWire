@@ -2,23 +2,10 @@ import { useEffect, useState } from "react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { BarChart3, Info, CheckCircle, RefreshCw } from "lucide-react";
 import { api } from "../api.js";
-import { Card, Button } from "../components/ui.js";
-
-interface Stats {
-  total: number;
-  truePositive: number;
-  trueNegative: number;
-  falsePositive: number;
-  falseNegative: number;
-  precision: number;
-  recall: number;
-  falsePositiveRate: number;
-  falseNegativeRate: number;
-  overrideRate: number;
-}
+import { Card, Button } from "../components/ui.jsx";
 
 export default function Feedback() {
-  const [stats, setStats] = useState<Stats | null>(null);
+  const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
 
   function load() {
