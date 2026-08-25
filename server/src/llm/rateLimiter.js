@@ -65,6 +65,7 @@ export function withRateLimit(provider, { minIntervalMs = MIN_INTERVAL_MS, maxRe
 
   return {
     generate: (...args) => withRetry(() => provider.generate(...args)),
+    transcribe: (...args) => withRetry(() => provider.transcribe(...args)),
     embed: (...args) => provider.embed(...args),
   };
 }
