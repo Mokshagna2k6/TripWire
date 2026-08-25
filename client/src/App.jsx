@@ -11,6 +11,8 @@ import {
   PanelLeftOpen,
   FolderClock,
   Trash2,
+  Menu,
+  X,
 } from "lucide-react";
 import Inspector from "./pages/Inspector.jsx";
 import Policies from "./pages/Policies.jsx";
@@ -26,6 +28,7 @@ import { Badge } from "./components/ui.jsx";
 
 export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [sessions, setSessions] = useState([]);
   const [activeSessionId, setActiveSessionIdState] = useState(null);
   const navigate = useNavigate();
@@ -55,11 +58,13 @@ export default function App() {
     setActiveSessionId(null);
     navigate("/");
     window.dispatchEvent(new CustomEvent("tripwire:new-chat"));
+    setMobileDrawerOpen(false);
   }
 
   function handleSelectSession(id) {
     setActiveSessionId(id);
     navigate("/");
+    setMobileDrawerOpen(false);
   }
 
   function handleDeleteSession(e, id) {
@@ -69,11 +74,19 @@ export default function App() {
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-slate-50 text-slate-900 font-sans">
-      {/* Left Sidebar */}
+      {/* Mobile backdrop, shown only while the drawer is open on small screens */}
+      {mobileDrawerOpen && (
+        <div
+          className="fixed inset-0 z-20 bg-slate-900/40 md:hidden"
+          onClick={() => setMobileDrawerOpen(false)}
+        />
+      )}
+
+      {/* Left Sidebar — off-canvas drawer on mobile, inline column from md breakpoint up */}
       <aside
-        className={`${
-          sidebarOpen ? "w-64" : "w-16"
-        } flex flex-col justify-between border-r border-slate-200/80 bg-white transition-all duration-200 shrink-0 z-20 h-full`}
+        className={`${sidebarOpen ? "md:w-64" : "md:w-16"} w-64 fixed md:relative inset-y-0 left-0 flex flex-col justify-between border-r border-slate-200/80 bg-white transition-transform md:transition-all duration-200 shrink-0 z-30 h-full ${
+          mobileDrawerOpen ? "translate-x-0" : "-translate-x-full"
+        } md:translate-x-0`}
       >
         {/* Top Section */}
         <div className="p-3 space-y-3 flex-1 flex flex-col min-h-0 overflow-hidden">
@@ -91,10 +104,19 @@ export default function App() {
 
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
+              className="hidden md:flex rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
               title={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
             >
               {sidebarOpen ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeftOpen className="h-4 w-4" />}
+            </button>
+
+            {/* Mobile-only close button for the drawer */}
+            <button
+              onClick={() => setMobileDrawerOpen(false)}
+              className="flex md:hidden rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
+              title="Close menu"
+            >
+              <X className="h-4 w-4" />
             </button>
           </div>
 
@@ -125,6 +147,7 @@ export default function App() {
                 }`
               }
               title="Chat & Inspector"
+              onClick={() => setMobileDrawerOpen(false)}
             >
               <MessageSquare className="h-4 w-4 shrink-0 text-slate-500" />
               {sidebarOpen && <span>Chat & Inspector</span>}
@@ -142,6 +165,7 @@ export default function App() {
                 }`
               }
               title="Human Review Queue"
+              onClick={() => setMobileDrawerOpen(false)}
             >
               <UserCheck className="h-4 w-4 shrink-0 text-slate-500" />
               {sidebarOpen && <span>Human Review</span>}
@@ -159,6 +183,7 @@ export default function App() {
                 }`
               }
               title="Feedback & Telemetry"
+              onClick={() => setMobileDrawerOpen(false)}
             >
               <BarChart3 className="h-4 w-4 shrink-0 text-slate-500" />
               {sidebarOpen && <span>Feedback & Metrics</span>}
@@ -235,6 +260,7 @@ export default function App() {
               }`
             }
             title="Settings & Policies"
+            onClick={() => setMobileDrawerOpen(false)}
           >
             <Settings className="h-4 w-4 shrink-0 text-slate-500" />
             {sidebarOpen && <span>Settings & Policies</span>}
@@ -253,7 +279,25 @@ export default function App() {
       </aside>
 
       {/* Main Center Content View */}
-      <main className="flex-1 flex flex-col h-full overflow-hidden bg-slate-50 relative">
+      <main className="flex-1 flex flex-col h-full min-w-0 overflow-hidden bg-slate-50 relative">
+        {/* Mobile-only top bar with menu trigger */}
+        <div className="flex md:hidden items-center gap-3 border-b border-slate-200/80 bg-white px-4 py-3 shrink-0">
+          <button
+            onClick={() => {
+              setSidebarOpen(true);
+              setMobileDrawerOpen(true);
+            }}
+            className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 transition-colors"
+            title="Open menu"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-600 text-white shrink-0">
+            <ShieldCheck className="h-3.5 w-3.5" />
+          </div>
+          <h1 className="text-sm font-bold tracking-tight text-slate-900">TripWire AI</h1>
+        </div>
+
         <Routes>
           <Route path="/" element={<Inspector />} />
           <Route path="/settings" element={<Policies />} />
