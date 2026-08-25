@@ -1,6 +1,6 @@
 const MAX_EVIDENCE_CHARS = 2000;
 
-/** Builds the final prompt sent to Gemini: user prompt + trimmed, relevance-ranked evidence context. */
+/** Builds the final prompt sent to the LLM: user prompt + trimmed, relevance-ranked evidence context. */
 export function optimizeContext(prompt, evidence) {
   if (evidence.length === 0) return prompt;
 

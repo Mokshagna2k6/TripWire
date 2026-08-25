@@ -3,7 +3,7 @@ const HIGH_RISK_KEYWORDS = /\b(diagnos|prescri|invest advice|tax filing|legal ad
 
 /**
  * Pre-generation routing: classifies risk from domain + prompt content before
- * the Gemini call is even made, so the orchestrator knows which verification
+ * the LLM call is even made, so the orchestrator knows which verification
  * depth to run once the response comes back.
  */
 export function classifyPreRisk(domain, prompt, riskTolerance) {

@@ -14,7 +14,7 @@ import {
 } from "./actions/actionHandler.js";
 
 /**
- * The Trust Gateway: pre-risk routing -> context optimization -> Gemini call ->
+ * The Trust Gateway: pre-risk routing -> context optimization -> LLM call ->
  * hold raw response -> adaptive verification -> policy/risk -> action handling
  * (with a bounded regenerate loop) -> audit trace. This is the one place the
  * whole flow described in the spec is wired together end to end.
@@ -91,7 +91,7 @@ export async function runPipeline(req, provider) {
   const trace = await recordAuditTrace({
     requestId,
     policyId: policy.id,
-    model: "gemini-3.6-flash",
+    model: "grok-4-fast",
     promptMeta: { domain: req.domain, preRiskMode: preRisk.mode, preRiskReasons: preRisk.reasons },
     rawResponse: responseText,
     structuredRepresentation: verification.structured,

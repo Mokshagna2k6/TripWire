@@ -1,31 +1,7 @@
 import { PrismaClient } from "@prisma/client";
-import { GeminiProvider } from "../src/llm/gemini.js";
+import { localEmbed } from "../src/llm/localEmbed.js";
 
 const prisma = new PrismaClient();
-
-// ponytail: deterministic 64-dim hashing embedding fallback so seeding works
-// without a GEMINI_API_KEY (e.g. CI/local dev). Swap for provider.embed() below
-// once a real key is available — cosine similarity still works fine on it.
-function localEmbed(text) {
-  const dims = 64;
-  const vec = new Array(dims).fill(0);
-  for (const word of text.toLowerCase().split(/\W+/).filter(Boolean)) {
-    let hash = 0;
-    for (let i = 0; i < word.length; i++) hash = (hash * 31 + word.charCodeAt(i)) >>> 0;
-    vec[hash % dims] += 1;
-  }
-  const norm = Math.sqrt(vec.reduce((s, v) => s + v * v, 0)) || 1;
-  return vec.map((v) => v / norm);
-}
-
-async function embed(text) {
-  if (!process.env.GEMINI_API_KEY) return localEmbed(text);
-  try {
-    return await new GeminiProvider().embed(text);
-  } catch {
-    return localEmbed(text);
-  }
-}
 
 const POLICIES = [
   {
@@ -141,7 +117,7 @@ async function main() {
     // Chunk by sentence for finer-grained retrieval.
     const sentences = doc.text.split(/(?<=[.!?])\s+/).filter(Boolean);
     for (const sentence of sentences) {
-      const embedding = await embed(sentence);
+      const embedding = localEmbed(sentence);
       await prisma.evidenceChunk.create({
         data: { documentId: created.id, text: sentence, embedding },
       });
