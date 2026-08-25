@@ -23,4 +23,7 @@ export const api = {
     request(`/review/${id}/decision`, { method: "POST", body: JSON.stringify({ decision }) }),
 
   feedbackStats: () => request("/feedback/stats"),
+
+  transcribe: (audio, mimeType) =>
+    request("/transcribe", { method: "POST", body: JSON.stringify({ audio, mimeType }) }),
 };

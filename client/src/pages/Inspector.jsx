@@ -16,6 +16,9 @@ import {
   Paperclip,
   FileText,
   X,
+  Mic,
+  Square,
+  Loader2,
 } from "lucide-react";
 import { api } from "../api.js";
 import { Badge } from "../components/ui.jsx";
@@ -41,10 +44,15 @@ export default function Inspector() {
   const [messages, setMessages] = useState([]);
   const [expandedTraceId, setExpandedTraceId] = useState(null);
   const [copiedId, setCopiedId] = useState(null);
+  const [recording, setRecording] = useState(false);
+  const [transcribing, setTranscribing] = useState(false);
+  const [voiceError, setVoiceError] = useState(null);
 
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
   const fileInputRef = useRef(null);
+  const mediaRecorderRef = useRef(null);
+  const audioChunksRef = useRef([]);
 
   // Load active session on mount or switch
   function loadCurrentSession(targetId) {
@@ -130,6 +138,66 @@ export default function Inspector() {
 
   function handleRemoveAttachment(index) {
     setAttachments((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  function flashVoiceError(message) {
+    setVoiceError(message);
+    setTimeout(() => setVoiceError(null), 4000);
+  }
+
+  async function startRecording() {
+    setVoiceError(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mimeType = MediaRecorder.isTypeSupported("audio/webm") ? "audio/webm" : "audio/mp4";
+      const recorder = new MediaRecorder(stream, { mimeType });
+      audioChunksRef.current = [];
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunksRef.current.push(e.data);
+      };
+
+      recorder.onstop = () => {
+        stream.getTracks().forEach((t) => t.stop());
+        const blob = new Blob(audioChunksRef.current, { type: mimeType });
+        setTranscribing(true);
+
+        const reader = new FileReader();
+        reader.onload = async () => {
+          const base64 = reader.result.split(",")[1] ?? "";
+          try {
+            const { text } = await api.transcribe(base64, mimeType);
+            if (text) setInput((prev) => (prev.trim() ? `${prev.trim()} ${text}` : text));
+            else flashVoiceError("No speech detected in the recording.");
+          } catch (err) {
+            flashVoiceError(err.message || "Transcription failed.");
+          } finally {
+            setTranscribing(false);
+          }
+        };
+        reader.onerror = () => {
+          flashVoiceError("Could not process the recording.");
+          setTranscribing(false);
+        };
+        reader.readAsDataURL(blob);
+      };
+
+      recorder.start();
+      mediaRecorderRef.current = recorder;
+      setRecording(true);
+    } catch {
+      flashVoiceError("Microphone access denied or unavailable.");
+    }
+  }
+
+  function stopRecording() {
+    mediaRecorderRef.current?.stop();
+    setRecording(false);
+  }
+
+  function handleMicClick() {
+    if (recording) stopRecording();
+    else startRecording();
   }
 
   async function handleSend() {
@@ -563,6 +631,14 @@ export default function Inspector() {
               </div>
             )}
 
+            {/* Voice Input Error */}
+            {voiceError && (
+              <div className="flex items-center gap-1.5 px-2 pb-2 pt-1 text-2xs font-medium text-rose-600">
+                <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                {voiceError}
+              </div>
+            )}
+
             {/* Input Textarea */}
             <textarea
               ref={textareaRef}
@@ -586,6 +662,28 @@ export default function Inspector() {
                 >
                   <Paperclip className="h-3.5 w-3.5 text-slate-500" />
                   <span>Add Media</span>
+                </button>
+
+                {/* Voice Input Button */}
+                <button
+                  type="button"
+                  onClick={handleMicClick}
+                  disabled={transcribing}
+                  className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-2xs font-semibold transition-colors border ${
+                    recording
+                      ? "bg-rose-100 border-rose-200 text-rose-700 hover:bg-rose-200 animate-pulse"
+                      : "bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200/60"
+                  } ${transcribing ? "opacity-60 cursor-not-allowed" : ""}`}
+                  title={recording ? "Stop recording" : "Record a voice prompt"}
+                >
+                  {transcribing ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin text-slate-500" />
+                  ) : recording ? (
+                    <Square className="h-3.5 w-3.5 text-rose-600" />
+                  ) : (
+                    <Mic className="h-3.5 w-3.5 text-slate-500" />
+                  )}
+                  <span>{transcribing ? "Transcribing…" : recording ? "Stop" : "Voice"}</span>
                 </button>
 
                 {/* Domain Selector Pill */}
