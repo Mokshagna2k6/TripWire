@@ -91,7 +91,7 @@ export async function runPipeline(req, provider) {
   const trace = await recordAuditTrace({
     requestId,
     policyId: policy.id,
-    model: "gemini-2.0-flash",
+    model: "gemini-3.6-flash",
     promptMeta: { domain: req.domain, preRiskMode: preRisk.mode, preRiskReasons: preRisk.reasons },
     rawResponse: responseText,
     structuredRepresentation: verification.structured,
