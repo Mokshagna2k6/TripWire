@@ -1,37 +1,7 @@
-import type { GenerateResult } from "./api.js";
-
-export interface MediaAttachment {
-  name: string;
-  type: string;
-  size: number;
-  dataUrl: string;
-}
-
-export interface ChatMessage {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-  domain: string;
-  attachments?: MediaAttachment[];
-  result?: GenerateResult;
-  error?: string;
-  timestamp: string;
-}
-
-export interface ChatSession {
-  id: string;
-  title: string;
-  domain: string;
-  createdAt: string;
-  updatedAt: string;
-  messages: ChatMessage[];
-  lastVerdict?: string;
-}
-
 const STORAGE_KEY = "tripwire_chat_sessions_v1";
 const ACTIVE_SESSION_KEY = "tripwire_active_session_id";
 
-export function loadSessions(): ChatSession[] {
+export function loadSessions() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
@@ -42,7 +12,7 @@ export function loadSessions(): ChatSession[] {
   }
 }
 
-export function saveSessions(sessions: ChatSession[]): void {
+export function saveSessions(sessions) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
     window.dispatchEvent(new CustomEvent("tripwire:sessions-updated", { detail: sessions }));
@@ -51,11 +21,11 @@ export function saveSessions(sessions: ChatSession[]): void {
   }
 }
 
-export function getActiveSessionId(): string | null {
+export function getActiveSessionId() {
   return localStorage.getItem(ACTIVE_SESSION_KEY);
 }
 
-export function setActiveSessionId(id: string | null): void {
+export function setActiveSessionId(id) {
   if (id) {
     localStorage.setItem(ACTIVE_SESSION_KEY, id);
   } else {
@@ -64,7 +34,7 @@ export function setActiveSessionId(id: string | null): void {
   window.dispatchEvent(new CustomEvent("tripwire:switch-session", { detail: id }));
 }
 
-export function deleteSession(id: string): void {
+export function deleteSession(id) {
   const sessions = loadSessions().filter((s) => s.id !== id);
   saveSessions(sessions);
   if (getActiveSessionId() === id) {

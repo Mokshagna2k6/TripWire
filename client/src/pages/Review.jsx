@@ -1,21 +1,12 @@
 import { useEffect, useState } from "react";
 import { UserCheck, CheckCircle2, XCircle, Clock, ShieldAlert, Check, RefreshCw } from "lucide-react";
 import { api } from "../api.js";
-import { Card, Badge, Button } from "../components/ui.js";
-
-interface PendingReview {
-  id: string;
-  risk: string;
-  reason: string;
-  response: string;
-  createdAt: string;
-  auditTrace: { action: string };
-}
+import { Card, Badge, Button } from "../components/ui.jsx";
 
 export default function Review() {
-  const [reviews, setReviews] = useState<PendingReview[]>([]);
+  const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [actionSuccess, setActionSuccess] = useState<string | null>(null);
+  const [actionSuccess, setActionSuccess] = useState(null);
 
   function load() {
     setLoading(true);
@@ -27,7 +18,7 @@ export default function Review() {
 
   useEffect(load, []);
 
-  async function decide(id: string, decision: "ALLOW" | "BLOCK") {
+  async function decide(id, decision) {
     await api.decideReview(id, decision);
     setActionSuccess(`Incident marked as ${decision}`);
     setTimeout(() => setActionSuccess(null), 3000);

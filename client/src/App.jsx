@@ -12,37 +12,34 @@ import {
   FolderClock,
   Trash2,
 } from "lucide-react";
-import Inspector from "./pages/Inspector.js";
-import Policies from "./pages/Policies.js";
-import Review from "./pages/Review.js";
-import Feedback from "./pages/Feedback.js";
+import Inspector from "./pages/Inspector.jsx";
+import Policies from "./pages/Policies.jsx";
+import Review from "./pages/Review.jsx";
+import Feedback from "./pages/Feedback.jsx";
 import {
   loadSessions,
   getActiveSessionId,
   setActiveSessionId,
   deleteSession,
-  type ChatSession,
 } from "./chatStorage.js";
-import { Badge } from "./components/ui.js";
+import { Badge } from "./components/ui.jsx";
 
 export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [sessions, setSessions] = useState<ChatSession[]>([]);
-  const [activeSessionId, setActiveSessionIdState] = useState<string | null>(null);
+  const [sessions, setSessions] = useState([]);
+  const [activeSessionId, setActiveSessionIdState] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
     setSessions(loadSessions());
     setActiveSessionIdState(getActiveSessionId());
 
-    function handleSessionsUpdated(e: Event) {
-      const customEvent = e as CustomEvent<ChatSession[]>;
-      setSessions(customEvent.detail ?? loadSessions());
+    function handleSessionsUpdated(e) {
+      setSessions(e.detail ?? loadSessions());
     }
 
-    function handleSessionSwitched(e: Event) {
-      const customEvent = e as CustomEvent<string | null>;
-      setActiveSessionIdState(customEvent.detail ?? getActiveSessionId());
+    function handleSessionSwitched(e) {
+      setActiveSessionIdState(e.detail ?? getActiveSessionId());
     }
 
     window.addEventListener("tripwire:sessions-updated", handleSessionsUpdated);
@@ -60,12 +57,12 @@ export default function App() {
     window.dispatchEvent(new CustomEvent("tripwire:new-chat"));
   }
 
-  function handleSelectSession(id: string) {
+  function handleSelectSession(id) {
     setActiveSessionId(id);
     navigate("/");
   }
 
-  function handleDeleteSession(e: React.MouseEvent, id: string) {
+  function handleDeleteSession(e, id) {
     e.stopPropagation();
     deleteSession(id);
   }
