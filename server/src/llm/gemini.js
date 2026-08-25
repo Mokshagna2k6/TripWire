@@ -10,9 +10,15 @@ export class GeminiProvider {
   }
 
   async generate(prompt, opts = {}) {
+    // Plain text stays a plain string content (cheapest path); attachments switch to the
+    // multimodal parts shape so the actual file bytes reach the model, not just a filename.
+    const contents = opts.attachments?.length
+      ? [{ role: "user", parts: [{ text: prompt }, ...opts.attachments.map((a) => ({ inlineData: { mimeType: a.mimeType, data: a.data } }))] }]
+      : prompt;
+
     const res = await this.client.models.generateContent({
       model: MODEL,
-      contents: prompt,
+      contents,
       config: {
         systemInstruction: opts.systemInstruction,
         temperature: opts.temperature ?? 0.4,

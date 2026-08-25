@@ -29,6 +29,9 @@ import {
   setActiveSessionId,
 } from "../chatStorage.js";
 
+// Keep in sync with server/src/routes/generate.js's SUPPORTED_ATTACHMENT_MIME_TYPES.
+const SUPPORTED_ATTACHMENT_MIME_TYPES = /^(image\/(png|jpeg|jpg|webp|heic|heif)|application\/pdf|text\/(plain|csv))$/;
+
 const DOMAINS = [
   { id: "general", label: "General" },
   { id: "finance_india", label: "Finance (India)" },
@@ -252,12 +255,21 @@ export default function Inspector() {
     }
 
     try {
-      // Send prompt text along with any document/media hints
-      const combinedPrompt = currentAttachments.length > 0
-        ? `${userPrompt}\n[User attached: ${currentAttachments.map((a) => a.name).join(", ")}]`
+      // Gemini's inlineData only understands images, PDFs, and plain text/csv — send those as
+      // real content. Anything else (doc/docx, etc.) falls back to a filename-only mention,
+      // same as before, since there's no reliable way to hand it raw bytes and have it parsed.
+      const sendableAttachments = currentAttachments
+        .filter((a) => SUPPORTED_ATTACHMENT_MIME_TYPES.test(a.type))
+        .map((a) => ({ mimeType: a.type, data: a.dataUrl.split(",")[1] ?? "" }));
+      const unsendableNames = currentAttachments
+        .filter((a) => !SUPPORTED_ATTACHMENT_MIME_TYPES.test(a.type))
+        .map((a) => a.name);
+
+      const combinedPrompt = unsendableNames.length > 0
+        ? `${userPrompt}\n[User also attached (format not directly readable): ${unsendableNames.join(", ")}]`
         : userPrompt;
 
-      const res = await api.generate(currentDomain, combinedPrompt);
+      const res = await api.generate(currentDomain, combinedPrompt, sendableAttachments.length > 0 ? sendableAttachments : undefined);
       const assistantMsg = {
         id: (Date.now() + 1).toString(),
         role: "assistant",

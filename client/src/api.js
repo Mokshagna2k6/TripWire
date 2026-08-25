@@ -12,8 +12,8 @@ async function request(path, options) {
 }
 
 export const api = {
-  generate: (domain, prompt) =>
-    request("/generate", { method: "POST", body: JSON.stringify({ domain, prompt }) }),
+  generate: (domain, prompt, attachments) =>
+    request("/generate", { method: "POST", body: JSON.stringify({ domain, prompt, attachments }) }),
 
   listPolicies: () => request("/policies"),
   updatePolicy: (id, data) => request(`/policies/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
