@@ -29,6 +29,9 @@ export function generateRouter(provider) {
       return res.status(httpStatus).json(result);
     } catch (err) {
       logger.error({ err }, "pipeline failed");
+      if (/PerDay/i.test(err?.message ?? "")) {
+        return res.status(503).json({ error: "The Gemini free-tier daily request quota is exhausted. Try again after it resets, or add billing to raise the limit." });
+      }
       return res.status(500).json({ error: "internal error running trust gateway pipeline" });
     }
   });
