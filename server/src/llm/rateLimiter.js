@@ -1,4 +1,8 @@
-const MIN_INTERVAL_MS = 4500; // ~13 requests/min — stays under typical Gemini free-tier RPM caps
+// 4500ms (~13 RPM) turned out to sit above gemini-2.5-flash's actual free-tier cap in
+// practice — every 429 forced a silent retry (spacing + backoff stacking to 15-20s+ with
+// nothing logged, so it looked like unexplained latency rather than what it was: rate
+// limiting). Dropped to ~8.6 RPM for real headroom.
+const MIN_INTERVAL_MS = 7000;
 const MAX_RETRIES = 3;
 const BASE_BACKOFF_MS = 2000;
 
@@ -17,7 +21,7 @@ function sleep(ms) {
  * rate-limit/overload errors (429, 503, RESOURCE_EXHAUSTED, "high demand").
  * `embed` is untouched — it's local, no external call to throttle.
  */
-export function withRateLimit(provider, { minIntervalMs = MIN_INTERVAL_MS, maxRetries = MAX_RETRIES } = {}) {
+export function withRateLimit(provider, { minIntervalMs = MIN_INTERVAL_MS, maxRetries = MAX_RETRIES, logger } = {}) {
   let chain = Promise.resolve();
   let lastCallAt = 0;
 
@@ -40,7 +44,9 @@ export function withRateLimit(provider, { minIntervalMs = MIN_INTERVAL_MS, maxRe
       } catch (err) {
         attempt++;
         if (attempt > maxRetries || !isTransient(err)) throw err;
-        await sleep(BASE_BACKOFF_MS * 2 ** (attempt - 1));
+        const backoff = BASE_BACKOFF_MS * 2 ** (attempt - 1);
+        logger?.warn({ attempt, maxRetries, backoffMs: backoff, err: err.message }, "LLM call hit a transient error, retrying");
+        await sleep(backoff);
       }
     }
   }
