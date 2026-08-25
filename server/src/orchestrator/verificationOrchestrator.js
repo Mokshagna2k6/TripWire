@@ -33,8 +33,15 @@ export async function runVerification(input, provider) {
   const evidence =
     input.mode === "FAST" ? [] : await retrieveEvidence(input.domain, input.originalPrompt + " " + input.responseText, provider);
 
+  // Judge and CBG are both extra LLM calls — only worth paying for once per request,
+  // on the first pass. Re-running them on every regenerate retry multiplies latency
+  // and burns through rate limits for no real benefit: the retry already incorporates
+  // the corrective feedback from round one, and fast detectors + core metrics still
+  // re-score the new response to decide whether another retry is needed.
+  const isFirstPass = input.regenerationCount === 0;
+
   let judgeOutput = null;
-  if (input.mode === "DEEP") {
+  if (input.mode === "DEEP" && isFirstPass) {
     judgeOutput = await runJudge(input.responseText, evidence, provider);
   }
 
@@ -48,10 +55,12 @@ export async function runVerification(input, provider) {
     judgeOutput: judgeOutput ?? undefined,
   });
 
-  if (input.mode === "DEEP" && shouldSampleCBG(true)) {
-    metrics.cbg = await computeCBG(input.originalPrompt, input.responseText, provider);
-  } else if (input.mode !== "FAST" && shouldSampleCBG(false)) {
-    metrics.cbg = await computeCBG(input.originalPrompt, input.responseText, provider);
+  if (isFirstPass) {
+    if (input.mode === "DEEP" && shouldSampleCBG(true)) {
+      metrics.cbg = await computeCBG(input.originalPrompt, input.responseText, provider);
+    } else if (input.mode !== "FAST" && shouldSampleCBG(false)) {
+      metrics.cbg = await computeCBG(input.originalPrompt, input.responseText, provider);
+    }
   }
 
   return { metrics, evidence, hardGate, judgeOutput, structured };
