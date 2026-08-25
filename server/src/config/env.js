@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 const schema = z.object({
-  XAI_API_KEY: z.string().min(1).optional().default(""),
+  GEMINI_API_KEY: z.string().min(1).optional().default(""),
   DATABASE_URL: z.string().min(1),
   PORT: z.coerce.number().default(4000),
 });
