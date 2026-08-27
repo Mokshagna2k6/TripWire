@@ -2,21 +2,22 @@ import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../db.js";
 import { classifyFeedback } from "../feedback/feedbackEngine.js";
+import { asyncHandler } from "../utils/asyncHandler.js";
 
 const decisionSchema = z.object({ decision: z.enum(["ALLOW", "BLOCK"]) });
 
 export const reviewRouter = Router();
 
-reviewRouter.get("/", async (_req, res) => {
+reviewRouter.get("/", asyncHandler(async (_req, res) => {
   const pending = await prisma.humanReview.findMany({
     where: { decision: null },
     orderBy: { createdAt: "asc" },
     include: { auditTrace: true },
   });
   res.json(pending);
-});
+}));
 
-reviewRouter.post("/:id/decision", async (req, res) => {
+reviewRouter.post("/:id/decision", asyncHandler(async (req, res) => {
   const parsed = decisionSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "invalid request" });
 
@@ -41,4 +42,4 @@ reviewRouter.post("/:id/decision", async (req, res) => {
   });
 
   res.json({ review: updated, feedback });
-});
+}));

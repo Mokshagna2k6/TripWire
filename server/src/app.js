@@ -25,5 +25,16 @@ export function createApp(provider) {
   app.use("/api/v1/review", reviewRouter);
   app.use("/api/v1/feedback", feedbackRouter);
 
+  app.use((req, res) => res.status(404).json({ error: "not found" }));
+
+  // Must have 4 params for Express to treat this as error-handling middleware.
+  // Catches anything asyncHandler forwards (or any sync throw) so the API always
+  // returns its JSON contract instead of Express's default HTML error page.
+  // eslint-disable-next-line no-unused-vars
+  app.use((err, req, res, next) => {
+    logger.error({ err }, "unhandled request error");
+    res.status(500).json({ error: "internal server error" });
+  });
+
   return app;
 }

@@ -26,6 +26,19 @@ describe("API surface (health + request validation, no DB needed)", () => {
     expect(res.status).toBe(400);
   });
 
+  it("GET /some/unknown/path returns a JSON 404, not Express's default HTML page", async () => {
+    const res = await supertest(app).get("/some/unknown/path");
+    expect(res.status).toBe(404);
+    expect(res.body).toEqual({ error: "not found" });
+  });
+
+  // No DATABASE_URL is set in this test environment, so any DB-backed route throws —
+  // exactly the failure mode asyncHandler + the error middleware exist to catch cleanly.
+  it("a DB-backed route that throws still returns a clean JSON 500, not a hang or HTML", async () => {
+    const res = await supertest(app).get("/api/v1/policies");
+    expect(res.status).toBe(500);
+    expect(res.body).toEqual({ error: "internal server error" });
+  });
 });
 
 describe("generate request schema (attachments)", () => {
