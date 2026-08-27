@@ -1,14 +1,25 @@
 import { prisma } from "../db.js";
 
+// In-memory cache for policy objects scoped to domains.
+const policyCache = new Map();
+
+export function clearPolicyCache() {
+  policyCache.clear();
+}
+
 /** Loads the policy for a domain (falls back to the "general" policy if no domain-specific one exists). */
 export async function loadPolicy(domain) {
+  if (policyCache.has(domain)) {
+    return policyCache.get(domain);
+  }
+
   const policy = (await prisma.policy.findFirst({ where: { domain } })) ?? (await prisma.policy.findUnique({ where: { name: "general" } }));
 
   if (!policy) {
     throw new Error(`no policy found for domain "${domain}" and no "general" fallback policy exists`);
   }
 
-  return {
+  const result = {
     id: policy.id,
     name: policy.name,
     domain: policy.domain,
@@ -18,4 +29,7 @@ export async function loadPolicy(domain) {
     hardGates: policy.hardGates,
     allowedActions: policy.allowedActions,
   };
+
+  policyCache.set(domain, result);
+  return result;
 }

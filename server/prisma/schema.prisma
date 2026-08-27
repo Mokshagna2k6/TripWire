@@ -92,6 +92,8 @@ model EvidenceDocument {
   createdAt DateTime @default(now())
 
   chunks EvidenceChunk[]
+
+  @@index([domain])
 }
 
 model EvidenceChunk {
@@ -101,4 +103,6 @@ model EvidenceChunk {
   text       String
   embedding  Json
   createdAt  DateTime @default(now())
+
+  @@index([documentId])
 }

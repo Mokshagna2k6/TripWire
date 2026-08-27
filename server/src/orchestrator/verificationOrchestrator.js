@@ -3,7 +3,7 @@ import { runFastDetectors, checkHardGate } from "../detectors/index.js";
 import { retrieveEvidence } from "../evidence/store.js";
 import { computeMetrics } from "../metrics/index.js";
 import { runJudge } from "../judge/judge.js";
-import { computeCBG, shouldSampleCBG } from "../metrics/cbg.js";
+import { computeCBG, hasProtectedAttribute, shouldSampleCBG, stableSample } from "../metrics/cbg.js";
 
 /**
  * Adaptive Verification Orchestrator: fast detectors + hard gate always run.
@@ -31,19 +31,39 @@ export async function runVerification(input, provider) {
   }
 
   const evidence =
-    input.mode === "FAST" ? [] : await retrieveEvidence(input.domain, input.originalPrompt + " " + input.responseText, provider);
+    input.mode === "FAST"
+      ? []
+      : input.initialEvidence ?? (await retrieveEvidence(input.domain, input.originalPrompt + " " + input.responseText, provider));
 
   // Judge and CBG are both extra LLM calls — only worth paying for once per request,
-  // on the first pass. Re-running them on every regenerate retry multiplies latency
-  // and burns through rate limits for no real benefit: the retry already incorporates
-  // the corrective feedback from round one, and fast detectors + core metrics still
-  // re-score the new response to decide whether another retry is needed.
+  // on the first pass. Re-running them on every regenerate retry multiplies latency.
   const isFirstPass = input.regenerationCount === 0;
 
-  let judgeOutput = null;
+  // Prepare promises to run concurrently
+  const embedResponsePromise = provider.embed(input.responseText);
+  const embedEvidencePromise = Promise.all(evidence.map((chunk) => provider.embed(chunk.text)));
+
+  let judgePromise = Promise.resolve(null);
   if (input.mode === "DEEP" && isFirstPass) {
-    judgeOutput = await runJudge(input.responseText, evidence, provider);
+    judgePromise = runJudge(input.responseText, evidence, provider);
   }
+
+  let cbgPromise = Promise.resolve(null);
+  if (isFirstPass && hasProtectedAttribute(input.originalPrompt)) {
+    const sample = stableSample(input.requestId);
+    const isDeep = input.mode === "DEEP";
+    if (shouldSampleCBG(isDeep, sample)) {
+      cbgPromise = computeCBG(input.originalPrompt, input.responseText, provider);
+    }
+  }
+
+  // Resolve all promises concurrently
+  const [responseEmbedding, evidenceEmbeddings, judgeOutput, cbgValue] = await Promise.all([
+    embedResponsePromise,
+    embedEvidencePromise,
+    judgePromise,
+    cbgPromise,
+  ]);
 
   const metrics = computeMetrics({
     responseText: input.responseText,
@@ -53,15 +73,11 @@ export async function runVerification(input, provider) {
     regenerationCount: input.regenerationCount,
     maxRetries: input.maxRetries,
     judgeOutput: judgeOutput ?? undefined,
+    responseEmbedding,
+    evidenceEmbeddings,
   });
 
-  if (isFirstPass) {
-    if (input.mode === "DEEP" && shouldSampleCBG(true)) {
-      metrics.cbg = await computeCBG(input.originalPrompt, input.responseText, provider);
-    } else if (input.mode !== "FAST" && shouldSampleCBG(false)) {
-      metrics.cbg = await computeCBG(input.originalPrompt, input.responseText, provider);
-    }
-  }
+  metrics.cbg = cbgValue;
 
   return { metrics, evidence, hardGate, judgeOutput, structured };
 }
