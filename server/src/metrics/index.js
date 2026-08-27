@@ -24,7 +24,13 @@ export function computeMetrics(input) {
     rre: computeRRE(input.structured.keySpans, input.evidence),
     pls: computePLS(input.fastDetectors.pii, input.fastDetectors.secrets),
     shs: computeSHS(input.fastDetectors.safety, input.judgeOutput?.safetySeverity),
-    hallucinationRisk: input.judgeOutput?.hallucinationRisk ?? 0,
+    // DEEP mode: the Judge's real contextual assessment. Outside DEEP mode there's no Judge
+    // call to source it from — fall back to a free local proxy (1 - evidenceSupport) instead
+    // of defaulting to 0, which reads as "no risk" when it actually means "never checked" and
+    // left every hallucinationRisk policy threshold silently dead outside DEEP mode. Less
+    // precise than genuine LLM reasoning (same lexical-matching blind spots as schemaX), but
+    // real and costs nothing extra.
+    hallucinationRisk: input.judgeOutput?.hallucinationRisk ?? 1 - schemaX.evidenceSupport,
     sas:
       input.responseEmbedding && input.evidenceEmbeddings
         ? computeSAS(input.responseEmbedding, input.evidenceEmbeddings)
