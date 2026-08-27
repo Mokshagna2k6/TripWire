@@ -3,6 +3,7 @@ import { classifyPreRisk } from "./orchestrator/preRiskRouter.js";
 import { optimizeContext } from "./orchestrator/contextOptimizer.js";
 import { runVerification } from "./orchestrator/verificationOrchestrator.js";
 import { loadPolicy } from "./policy/policyEngine.js";
+import { retrieveEvidence } from "./evidence/store.js";
 import { evaluateRisk } from "./risk/riskEngine.js";
 import { recordAuditTrace } from "./audit/auditEngine.js";
 import { prisma } from "./db.js";
@@ -34,7 +35,10 @@ export async function runPipeline(req, provider) {
   let decision;
   let verification;
 
-  const optimizedPrompt = optimizeContext(prompt, []); // ponytail: no evidence pre-retrieval before first call for MVP; evidence is fetched during verification against the response itself
+  // Retrieve before generation so STANDARD/DEEP responses are actually grounded.
+  // FAST remains a low-cost path with no retrieval.
+  const initialEvidence = preRisk.mode === "FAST" ? [] : await retrieveEvidence(req.domain, prompt, provider);
+  const optimizedPrompt = optimizeContext(prompt, initialEvidence);
 
   // Attachments only go on the initial call — regenerate retries are corrective text
   // feedback about the response already given, not a fresh look at the same file.
@@ -48,12 +52,14 @@ export async function runPipeline(req, provider) {
     verification = await runVerification(
       {
         domain: req.domain,
+        requestId,
         originalPrompt: req.prompt,
         responseText,
         mode: preRisk.mode,
         regenerationCount,
         maxRetries: MAX_REGENERATE_RETRIES,
         expectedFormat: req.expectedFormat,
+        initialEvidence,
       },
       provider
     );
@@ -74,7 +80,7 @@ export async function runPipeline(req, provider) {
 
     regenerationCount++;
     const correctivePrompt = buildCorrectiveFeedbackPrompt(req.prompt, responseText, decision.reasons);
-    const retry = await provider.generate(correctivePrompt);
+    const retry = await provider.generate(optimizeContext(correctivePrompt, verification.evidence));
     responseText = retry.text;
     totalInputTokens += retry.tokens.input;
     totalOutputTokens += retry.tokens.output;
@@ -89,6 +95,17 @@ export async function runPipeline(req, provider) {
   }
 
   const finalOutcome = decision.action === "BLOCK" ? "blocked" : decision.action === "HUMAN_REVIEW" ? "pending_review" : "delivered";
+
+  let humanReviewData = null;
+  if (decision.action === "HUMAN_REVIEW") {
+    humanReviewData = {
+      risk: decision.riskLevel,
+      reason: decision.reasons.join("; "),
+      response: responseText,
+      evidence: verification.evidence,
+      metrics: verification.metrics,
+    };
+  }
 
   const trace = await recordAuditTrace({
     requestId,
@@ -105,23 +122,10 @@ export async function runPipeline(req, provider) {
     latencyMs: Date.now() - startedAt,
     tokens: { input: totalInputTokens, output: totalOutputTokens },
     finalOutcome,
+    humanReviewData,
   });
 
-  let humanReviewId;
-  if (decision.action === "HUMAN_REVIEW") {
-    const review = await prisma.humanReview.create({
-      data: {
-        auditTraceId: trace.id,
-        risk: decision.riskLevel,
-        reason: decision.reasons.join("; "),
-        response: responseText,
-        evidence: verification.evidence,
-        metrics: verification.metrics,
-      },
-    });
-    humanReviewId = review.id;
-    await prisma.auditTrace.update({ where: { id: trace.id }, data: { humanReviewId } });
-  }
+  const humanReviewId = trace.humanReview?.id;
 
   return {
     requestId,

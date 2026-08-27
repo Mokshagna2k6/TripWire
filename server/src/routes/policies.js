@@ -1,13 +1,16 @@
 import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../db.js";
+import { clearPolicyCache } from "../policy/policyEngine.js";
 
+const metricName = z.enum(["pls", "shs", "uis", "ceg", "errorDensity", "cur", "ro", "rre", "sas", "cbg", "schemaX", "hallucinationRisk"]);
+const actionName = z.enum(["ALLOW", "EDIT_CLARIFY", "REGENERATE", "HUMAN_REVIEW", "BLOCK"]);
 const updateSchema = z.object({
-  thresholds: z.array(z.object({ metric: z.string(), operator: z.enum([">=", ">", "<=", "<"]), value: z.number(), action: z.string() })).optional(),
-  hardGates: z.record(z.string(), z.number()).optional(),
-  allowedActions: z.array(z.string()).optional(),
-  riskTolerance: z.string().optional(),
-});
+  thresholds: z.array(z.object({ metric: metricName, operator: z.enum([">=", ">", "<=", "<"]), value: z.number().finite(), action: actionName })).optional(),
+  hardGates: z.record(metricName, z.number().finite()).optional(),
+  allowedActions: z.array(actionName).min(1).optional(),
+  riskTolerance: z.enum(["low", "medium", "high"]).optional(),
+}).strict();
 
 export const policiesRouter = Router();
 
@@ -30,5 +33,8 @@ policiesRouter.patch("/:id", async (req, res) => {
     where: { id: req.params.id },
     data: parsed.data,
   });
+  
+  clearPolicyCache();
+  
   res.json(policy);
 });

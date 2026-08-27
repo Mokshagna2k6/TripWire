@@ -24,6 +24,7 @@ export function computeMetrics(input) {
     rre: computeRRE(input.structured.keySpans, input.evidence),
     pls: computePLS(input.fastDetectors.pii, input.fastDetectors.secrets),
     shs: computeSHS(input.fastDetectors.safety, input.judgeOutput?.safetySeverity),
+    hallucinationRisk: input.judgeOutput?.hallucinationRisk ?? 0,
     sas:
       input.responseEmbedding && input.evidenceEmbeddings
         ? computeSAS(input.responseEmbedding, input.evidenceEmbeddings)

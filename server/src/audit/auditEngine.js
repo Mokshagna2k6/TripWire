@@ -1,6 +1,6 @@
 import { prisma } from "../db.js";
 
-/** Writes the full pipeline trace to Postgres. This is the system of record for every decision TripWire makes. */
+/** Writes the full pipeline trace (and optional human review) to Postgres in a single transaction/query. */
 export async function recordAuditTrace(input) {
   return prisma.auditTrace.create({
     data: {
@@ -19,6 +19,14 @@ export async function recordAuditTrace(input) {
       latencyMs: input.latencyMs,
       tokens: input.tokens,
       finalOutcome: input.finalOutcome,
+      ...(input.humanReviewData ? {
+        humanReview: {
+          create: input.humanReviewData
+        }
+      } : {})
     },
+    include: {
+      humanReview: true
+    }
   });
 }
