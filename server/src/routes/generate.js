@@ -41,6 +41,9 @@ export function generateRouter(provider) {
       if (/PerDay/i.test(err?.message ?? "")) {
         return res.status(503).json({ error: "The Gemini free-tier daily request quota is exhausted. Try again after it resets, or add billing to raise the limit." });
       }
+      if (err?.code === "LLM_QUEUE_FULL") return res.status(429).json({ error: "The gateway is busy; retry shortly." });
+      if (err?.code === "CIRCUIT_BREAKER_OPEN" || /circuit breaker/i.test(err?.message ?? "")) return res.status(503).json({ error: "The upstream model is temporarily unavailable; retry shortly." });
+      if (/timed out/i.test(err?.message ?? "")) return res.status(504).json({ error: "The upstream model timed out; retry shortly." });
       return res.status(500).json({ error: "internal error running trust gateway pipeline" });
     }
   });

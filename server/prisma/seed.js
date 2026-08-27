@@ -1,7 +1,31 @@
-import { PrismaClient } from "@prisma/client";
-import { localEmbed } from "../src/llm/localEmbed.js";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const envPath = path.resolve(__dirname, "../.env");
+if (fs.existsSync(envPath)) {
+  const envContent = fs.readFileSync(envPath, "utf-8");
+  for (const line of envContent.split("\n")) {
+    const match = line.match(/^\s*([\w.\-]+)\s*=\s*(.*)?\s*$/);
+    if (match) {
+      const key = match[1];
+      let value = match[2] || "";
+      if (value.startsWith('"') && value.endsWith('"')) {
+        value = value.slice(1, -1);
+      } else if (value.startsWith("'") && value.endsWith("'")) {
+        value = value.slice(1, -1);
+      }
+      process.env[key] = value;
+    }
+  }
+}
+
+const { PrismaClient } = await import("@prisma/client");
+const { GeminiProvider } = await import("../src/llm/gemini.js");
 
 const prisma = new PrismaClient();
+const provider = new GeminiProvider();
 
 const POLICIES = [
   {
@@ -15,6 +39,12 @@ const POLICIES = [
       { metric: "ceg", operator: ">=", value: 4, action: "HUMAN_REVIEW" },
       { metric: "errorDensity", operator: ">=", value: 3, action: "EDIT_CLARIFY" },
       { metric: "schemaX", operator: "<", value: 0.4, action: "REGENERATE" },
+      { metric: "cur", operator: "<", value: 0.1, action: "REGENERATE" },
+      { metric: "rre", operator: "<", value: 0.2, action: "REGENERATE" },
+      { metric: "sas", operator: ">=", value: 0.85, action: "REGENERATE" },
+      { metric: "cbg", operator: ">=", value: 0.6, action: "HUMAN_REVIEW" },
+      { metric: "hallucinationRisk", operator: ">=", value: 0.7, action: "HUMAN_REVIEW" },
+      { metric: "ro", operator: ">=", value: 1, action: "HUMAN_REVIEW" },
     ],
     allowedActions: ["ALLOW", "EDIT_CLARIFY", "REGENERATE", "BLOCK", "HUMAN_REVIEW"],
   },
@@ -28,6 +58,12 @@ const POLICIES = [
       { metric: "uis", operator: ">=", value: 4, action: "REGENERATE" },
       { metric: "ceg", operator: ">=", value: 4, action: "HUMAN_REVIEW" },
       { metric: "schemaX", operator: "<", value: 0.5, action: "HUMAN_REVIEW" },
+      { metric: "cur", operator: "<", value: 0.1, action: "REGENERATE" },
+      { metric: "rre", operator: "<", value: 0.2, action: "HUMAN_REVIEW" },
+      { metric: "sas", operator: ">=", value: 0.8, action: "HUMAN_REVIEW" },
+      { metric: "cbg", operator: ">=", value: 0.5, action: "HUMAN_REVIEW" },
+      { metric: "hallucinationRisk", operator: ">=", value: 0.6, action: "HUMAN_REVIEW" },
+      { metric: "ro", operator: ">=", value: 1, action: "HUMAN_REVIEW" },
     ],
     allowedActions: ["ALLOW", "EDIT_CLARIFY", "REGENERATE", "BLOCK", "HUMAN_REVIEW"],
   },
@@ -41,6 +77,12 @@ const POLICIES = [
       { metric: "uis", operator: ">=", value: 2, action: "HUMAN_REVIEW" },
       { metric: "ceg", operator: ">=", value: 3, action: "HUMAN_REVIEW" },
       { metric: "schemaX", operator: "<", value: 0.6, action: "REGENERATE" },
+      { metric: "cur", operator: "<", value: 0.1, action: "HUMAN_REVIEW" },
+      { metric: "rre", operator: "<", value: 0.2, action: "HUMAN_REVIEW" },
+      { metric: "sas", operator: ">=", value: 0.7, action: "HUMAN_REVIEW" },
+      { metric: "cbg", operator: ">=", value: 0.4, action: "HUMAN_REVIEW" },
+      { metric: "hallucinationRisk", operator: ">=", value: 0.5, action: "HUMAN_REVIEW" },
+      { metric: "ro", operator: ">=", value: 1, action: "HUMAN_REVIEW" },
     ],
     allowedActions: ["ALLOW", "EDIT_CLARIFY", "REGENERATE", "HUMAN_REVIEW", "BLOCK"],
   },
@@ -53,6 +95,12 @@ const POLICIES = [
     thresholds: [
       { metric: "uis", operator: ">=", value: 4, action: "REGENERATE" },
       { metric: "errorDensity", operator: ">=", value: 4, action: "REGENERATE" },
+      { metric: "cur", operator: "<", value: 0.1, action: "REGENERATE" },
+      { metric: "rre", operator: "<", value: 0.2, action: "REGENERATE" },
+      { metric: "sas", operator: ">=", value: 0.85, action: "REGENERATE" },
+      { metric: "cbg", operator: ">=", value: 0.6, action: "HUMAN_REVIEW" },
+      { metric: "hallucinationRisk", operator: ">=", value: 0.7, action: "HUMAN_REVIEW" },
+      { metric: "ro", operator: ">=", value: 1, action: "HUMAN_REVIEW" },
     ],
     allowedActions: ["ALLOW", "EDIT_CLARIFY", "REGENERATE", "BLOCK", "HUMAN_REVIEW"],
   },
@@ -117,7 +165,7 @@ async function main() {
     // Chunk by sentence for finer-grained retrieval.
     const sentences = doc.text.split(/(?<=[.!?])\s+/).filter(Boolean);
     for (const sentence of sentences) {
-      const embedding = localEmbed(sentence);
+      const embedding = await provider.embed(sentence);
       await prisma.evidenceChunk.create({
         data: { documentId: created.id, text: sentence, embedding },
       });

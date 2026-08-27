@@ -10,11 +10,9 @@ function claimSupported(claim, evidence) {
 export function computeSchemaX(structured, evidence, schemaCheck) {
   const totalClaims = structured.claims.length;
   const supportedClaims = structured.claims.filter((c) => claimSupported(c, evidence)).length;
-  // No evidence retrieved (domain has no RAG corpus, e.g. general/medical/enterprise, or an
-  // open-domain prompt) does not mean the claims are unsupported — there's nothing to check
-  // them against, so don't penalize. Only score claims down when evidence actually exists
-  // and doesn't back them up (the case RAG-covered domains like finance_india are for).
-  const evidenceSupport = evidence.length === 0 || totalClaims === 0 ? 1 : supportedClaims / totalClaims;
+  // A missing corpus is unverified, not fully supported. Keep the neutral score separate
+  // from genuine evidence support so policy cannot mistake absence of evidence for proof.
+  const evidenceSupport = totalClaims === 0 ? 1 : evidence.length === 0 ? 0.5 : supportedClaims / totalClaims;
 
   const sourceQuality =
     evidence.length === 0

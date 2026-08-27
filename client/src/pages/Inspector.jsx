@@ -43,6 +43,7 @@ export default function Inspector() {
   const [domain, setDomain] = useState("general");
   const [input, setInput] = useState("");
   const [attachments, setAttachments] = useState([]);
+  const [expectsJson, setExpectsJson] = useState(false);
   const [loading, setLoading] = useState(false);
   const [messages, setMessages] = useState([]);
   const [expandedTraceId, setExpandedTraceId] = useState(null);
@@ -117,6 +118,10 @@ export default function Inspector() {
     if (!files || files.length === 0) return;
 
     Array.from(files).forEach((file) => {
+      if (!SUPPORTED_ATTACHMENT_MIME_TYPES.test(file.type)) {
+        flashVoiceError(`${file.name} was not attached: only images, PDF, TXT, and CSV files can be analyzed.`);
+        return;
+      }
       const reader = new FileReader();
       reader.onload = () => {
         if (typeof reader.result === "string") {
@@ -255,21 +260,13 @@ export default function Inspector() {
     }
 
     try {
-      // Gemini's inlineData only understands images, PDFs, and plain text/csv — send those as
-      // real content. Anything else (doc/docx, etc.) falls back to a filename-only mention,
-      // same as before, since there's no reliable way to hand it raw bytes and have it parsed.
-      const sendableAttachments = currentAttachments
-        .filter((a) => SUPPORTED_ATTACHMENT_MIME_TYPES.test(a.type))
-        .map((a) => ({ mimeType: a.type, data: a.dataUrl.split(",")[1] ?? "" }));
-      const unsendableNames = currentAttachments
-        .filter((a) => !SUPPORTED_ATTACHMENT_MIME_TYPES.test(a.type))
-        .map((a) => a.name);
-
-      const combinedPrompt = unsendableNames.length > 0
-        ? `${userPrompt}\n[User also attached (format not directly readable): ${unsendableNames.join(", ")}]`
-        : userPrompt;
-
-      const res = await api.generate(currentDomain, combinedPrompt, sendableAttachments.length > 0 ? sendableAttachments : undefined);
+      const sendableAttachments = currentAttachments.map((a) => ({ mimeType: a.type, data: a.dataUrl.split(",")[1] ?? "" }));
+      const res = await api.generate(
+        currentDomain,
+        userPrompt,
+        sendableAttachments.length > 0 ? sendableAttachments : undefined,
+        expectsJson ? { format: "json" } : undefined,
+      );
       const assistantMsg = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
@@ -605,7 +602,7 @@ export default function Inspector() {
             type="file"
             ref={fileInputRef}
             onChange={handleFileSelect}
-            accept="image/*,.pdf,.txt,.csv,.doc,.docx"
+            accept="image/*,.pdf,.txt,.csv"
             multiple
             className="hidden"
           />
@@ -714,6 +711,10 @@ export default function Inspector() {
                     ))}
                   </select>
                 </div>
+                <label className="flex items-center gap-1 text-2xs font-semibold text-slate-600" title="Require valid JSON in the response">
+                  <input type="checkbox" checked={expectsJson} onChange={(e) => setExpectsJson(e.target.checked)} />
+                  JSON
+                </label>
               </div>
 
               {/* Dynamic Send Arrow Button */}
