@@ -30,4 +30,23 @@ describe("metric integrity", () => {
   it("makes CBG sampling reproducible for a request id", () => {
     expect(stableSample("request-123")).toBe(stableSample("request-123"));
   });
+
+  it("falls back to a local hallucinationRisk estimate outside DEEP mode instead of a misleading 0", () => {
+    const { judgeOutput, ...noJudge } = input;
+    const metrics = computeMetrics(noJudge);
+    // evidenceSupport for this input's fully-matching claim/evidence pair is 1, so the local
+    // estimate (1 - evidenceSupport) should be 0 here too — but for the right reason: it was
+    // computed, not defaulted.
+    expect(metrics.hallucinationRisk).toBe(1 - metrics.schemaX.evidenceSupport);
+  });
+
+  it("local hallucinationRisk estimate is non-zero when evidence doesn't support the claim", () => {
+    const unsupported = {
+      ...input,
+      judgeOutput: undefined,
+      structured: { claims: [{ text: "Something completely unrelated to the evidence." }], keySpans: [] },
+    };
+    const metrics = computeMetrics(unsupported);
+    expect(metrics.hallucinationRisk).toBeGreaterThan(0);
+  });
 });
