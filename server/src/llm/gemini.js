@@ -65,17 +65,12 @@ export class GeminiProvider {
   }
 
   async embed(text) {
-    if (!env.GEMINI_API_KEY) {
-      return localEmbed(text);
-    }
-    try {
-      const res = await withTimeout(this.client.models.embedContent({
-        model: "text-embedding-004",
-        contents: text,
-      }), DEFAULT_TIMEOUT_MS, "Gemini embedding");
-      return res.embedding.values;
-    } catch (err) {
-      return localEmbed(text);
-    }
+    // Always local, never the real Gemini embeddings API. embed() is called far more often
+    // than generate() — once per response, once per retrieved evidence chunk, twice more for
+    // CBG, on every verification pass including regenerate retries — so routing it through a
+    // metered call turns a handful of quota-relevant requests into dozens per user message.
+    // SAS/CUR/CBG only need embeddings that are internally consistent with each other, not
+    // "real" semantic ones, so the free local hash is the right tool here, not a downgrade.
+    return localEmbed(text);
   }
 }
