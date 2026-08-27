@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../db.js";
-import { recordFeedback } from "../feedback/feedbackEngine.js";
+import { classifyFeedback } from "../feedback/feedbackEngine.js";
 
 const decisionSchema = z.object({ decision: z.enum(["ALLOW", "BLOCK"]) });
 
@@ -24,16 +24,21 @@ reviewRouter.post("/:id/decision", async (req, res) => {
   if (!review) return res.status(404).json({ error: "not found" });
   if (review.decision) return res.status(409).json({ error: "already decided" });
 
-  const updated = await prisma.humanReview.update({
-    where: { id: req.params.id },
-    data: { decision: parsed.data.decision, reviewedAt: new Date() },
+  const { updated, feedback } = await prisma.$transaction(async (tx) => {
+    const updated = await tx.humanReview.update({
+      where: { id: req.params.id },
+      data: { decision: parsed.data.decision, reviewedAt: new Date() },
+    });
+    const feedback = await tx.feedbackRecord.create({
+      data: {
+        auditTraceId: review.auditTraceId,
+        systemAction: review.auditTrace.action,
+        humanDecision: parsed.data.decision,
+        classification: classifyFeedback(review.auditTrace.action, parsed.data.decision),
+      },
+    });
+    return { updated, feedback };
   });
-
-  const feedback = await recordFeedback(
-    review.auditTraceId,
-    review.auditTrace.action,
-    parsed.data.decision
-  );
 
   res.json({ review: updated, feedback });
 });

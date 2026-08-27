@@ -36,6 +36,8 @@ function metricValue(metrics, name) {
       return metrics.sas;
     case "cbg":
       return metrics.cbg ?? undefined;
+    case "hallucinationRisk":
+      return metrics.hallucinationRisk;
     case "schemaX":
       return metrics.schemaX.score;
     default:
