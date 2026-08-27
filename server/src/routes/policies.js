@@ -2,6 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../db.js";
 import { clearPolicyCache } from "../policy/policyEngine.js";
+import { asyncHandler } from "../utils/asyncHandler.js";
 
 const metricName = z.enum(["pls", "shs", "uis", "ceg", "errorDensity", "cur", "ro", "rre", "sas", "cbg", "schemaX", "hallucinationRisk"]);
 const actionName = z.enum(["ALLOW", "EDIT_CLARIFY", "REGENERATE", "HUMAN_REVIEW", "BLOCK"]);
@@ -14,18 +15,18 @@ const updateSchema = z.object({
 
 export const policiesRouter = Router();
 
-policiesRouter.get("/", async (_req, res) => {
+policiesRouter.get("/", asyncHandler(async (_req, res) => {
   const policies = await prisma.policy.findMany({ orderBy: { name: "asc" } });
   res.json(policies);
-});
+}));
 
-policiesRouter.get("/:id", async (req, res) => {
+policiesRouter.get("/:id", asyncHandler(async (req, res) => {
   const policy = await prisma.policy.findUnique({ where: { id: req.params.id } });
   if (!policy) return res.status(404).json({ error: "not found" });
   res.json(policy);
-});
+}));
 
-policiesRouter.patch("/:id", async (req, res) => {
+policiesRouter.patch("/:id", asyncHandler(async (req, res) => {
   const parsed = updateSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "invalid request", details: parsed.error.flatten() });
 
@@ -33,8 +34,8 @@ policiesRouter.patch("/:id", async (req, res) => {
     where: { id: req.params.id },
     data: parsed.data,
   });
-  
+
   clearPolicyCache();
-  
+
   res.json(policy);
-});
+}));
