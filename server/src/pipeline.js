@@ -44,6 +44,7 @@ export async function runPipeline(req, provider) {
   // feedback about the response already given, not a fresh look at the same file.
   const first = await provider.generate(optimizedPrompt, { attachments: req.attachments });
   responseText = first.text;
+  let geminiSafetyHits = first.geminiSafetyHits ?? [];
   totalInputTokens += first.tokens.input;
   totalOutputTokens += first.tokens.output;
 
@@ -60,6 +61,7 @@ export async function runPipeline(req, provider) {
         maxRetries: MAX_REGENERATE_RETRIES,
         expectedFormat: req.expectedFormat,
         initialEvidence,
+        geminiSafetyHits,
       },
       provider
     );
@@ -82,6 +84,7 @@ export async function runPipeline(req, provider) {
     const correctivePrompt = buildCorrectiveFeedbackPrompt(req.prompt, responseText, decision.reasons);
     const retry = await provider.generate(optimizeContext(correctivePrompt, verification.evidence));
     responseText = retry.text;
+    geminiSafetyHits = retry.geminiSafetyHits ?? [];
     totalInputTokens += retry.tokens.input;
     totalOutputTokens += retry.tokens.output;
   }

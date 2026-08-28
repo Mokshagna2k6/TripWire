@@ -1,6 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 import { env } from "../config/env.js";
 import { localEmbed } from "./localEmbed.js";
+import { mapGeminiSafetyRatings } from "./geminiSafety.js";
 
 const MODEL = "gemini-2.5-flash";
 const DEFAULT_TIMEOUT_MS = 45_000;
@@ -43,6 +44,8 @@ export class GeminiProvider {
         input: usage?.promptTokenCount ?? 0,
         output: usage?.candidatesTokenCount ?? 0,
       },
+      // Free — already computed by Google on every call, we're just reading it now.
+      geminiSafetyHits: mapGeminiSafetyRatings(res.candidates?.[0]?.safetyRatings),
     };
   }
 

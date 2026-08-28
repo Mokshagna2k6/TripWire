@@ -20,7 +20,15 @@ const WELL_GROUNDED_THRESHOLD = 0.8;
  */
 export async function runVerification(input, provider) {
   const structured = analyzeResponse(input.responseText);
-  const fastDetectors = runFastDetectors(input.responseText, input.expectedFormat);
+  const regexDetectors = runFastDetectors(input.responseText, input.expectedFormat);
+
+  // OR our independent regex layer with Gemini's own built-in safety classifier (free — already
+  // computed on the generate() call we already made). Purely additive: either source can catch
+  // something the other misses, but neither can override or suppress a hit the other source
+  // found. Our regex still gates fully on its own merits with zero dependency on this signal.
+  const combinedSafety = [...regexDetectors.safety, ...(input.geminiSafetyHits ?? [])];
+  const fastDetectors = { ...regexDetectors, safety: combinedSafety };
+
   const hardGate = checkHardGate(fastDetectors);
 
   if (hardGate.triggered) {
