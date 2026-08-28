@@ -20,6 +20,7 @@ import {
   Square,
   Loader2,
 } from "lucide-react";
+import ReactMarkdown from "react-markdown";
 import { api } from "../api.js";
 import { Badge } from "../components/ui.jsx";
 import {
@@ -31,6 +32,31 @@ import {
 
 // Keep in sync with server/src/routes/generate.js's SUPPORTED_ATTACHMENT_MIME_TYPES.
 const SUPPORTED_ATTACHMENT_MIME_TYPES = /^(image\/(png|jpeg|jpg|webp|heic|heif)|application\/pdf|text\/(plain|csv))$/;
+
+// Gemini's responses are markdown (bold, bullet lists, headings) — render them properly
+// instead of dumping raw "**text**"/"* item" asterisks at the user. react-markdown renders to
+// React elements (no dangerouslySetInnerHTML), so this stays safe against LLM-output injection.
+const MARKDOWN_COMPONENTS = {
+  p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+  strong: ({ children }) => <strong className="font-semibold text-slate-900">{children}</strong>,
+  em: ({ children }) => <em className="italic">{children}</em>,
+  ul: ({ children }) => <ul className="mb-2 list-disc space-y-1 pl-5 last:mb-0">{children}</ul>,
+  ol: ({ children }) => <ol className="mb-2 list-decimal space-y-1 pl-5 last:mb-0">{children}</ol>,
+  li: ({ children }) => <li>{children}</li>,
+  code: ({ children }) => <code className="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">{children}</code>,
+  pre: ({ children }) => <pre className="mb-2 overflow-x-auto rounded-lg bg-slate-100 p-3 text-xs last:mb-0">{children}</pre>,
+  a: ({ children, href }) => (
+    <a href={href} target="_blank" rel="noreferrer" className="text-indigo-600 underline hover:text-indigo-700">
+      {children}
+    </a>
+  ),
+  h1: ({ children }) => <h1 className="mb-2 text-base font-bold text-slate-900">{children}</h1>,
+  h2: ({ children }) => <h2 className="mb-2 text-sm font-bold text-slate-900">{children}</h2>,
+  h3: ({ children }) => <h3 className="mb-1.5 text-sm font-semibold text-slate-900">{children}</h3>,
+  blockquote: ({ children }) => (
+    <blockquote className="mb-2 border-l-2 border-slate-300 pl-3 italic text-slate-600 last:mb-0">{children}</blockquote>
+  ),
+};
 
 const DOMAINS = [
   { id: "general", label: "General" },
@@ -447,8 +473,8 @@ export default function Inspector() {
 
                         {/* Model Output Text / Withheld Warning */}
                         {msg.result.response ? (
-                          <div className="text-sm leading-relaxed text-slate-800 whitespace-pre-wrap">
-                            {msg.result.response}
+                          <div className="text-sm leading-relaxed text-slate-800">
+                            <ReactMarkdown components={MARKDOWN_COMPONENTS}>{msg.result.response}</ReactMarkdown>
                           </div>
                         ) : (
                           <div className="rounded-xl bg-rose-50/70 border border-rose-200/80 p-3.5 text-xs text-rose-800">
