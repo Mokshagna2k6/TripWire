@@ -2,8 +2,14 @@ import { analyzeResponse } from "../analyzer/responseAnalyzer.js";
 import { runFastDetectors, checkHardGate } from "../detectors/index.js";
 import { retrieveEvidence } from "../evidence/store.js";
 import { computeMetrics } from "../metrics/index.js";
+import { computeSchemaX } from "../metrics/schemaX.js";
 import { runJudge } from "../judge/judge.js";
 import { computeCBG, hasProtectedAttribute, shouldSampleCBG, stableSample } from "../metrics/cbg.js";
+
+// Below this local evidenceSupport, the response isn't confidently well-grounded on lexical
+// matching alone — worth a real Judge read. At or above it, local scoring already agrees the
+// response looks solid.
+const WELL_GROUNDED_THRESHOLD = 0.8;
 
 /**
  * Adaptive Verification Orchestrator: fast detectors + hard gate always run.
@@ -43,8 +49,17 @@ export async function runVerification(input, provider) {
   const embedResponsePromise = provider.embed(input.responseText);
   const embedEvidencePromise = Promise.all(evidence.map((chunk) => provider.embed(chunk.text)));
 
+  // Skip the Judge only when there's nothing on either axis it exists to check: Layer 1
+  // safety found nothing at all, and the response already looks well-grounded on cheap local
+  // scoring. Anything short of that — any safety hit, or weak/uncertain local grounding
+  // (including "no evidence corpus to check against", which scores 0.5, below threshold) —
+  // still gets the real Judge call, same as before. This only ever removes calls, it never
+  // adds new ones — FAST/STANDARD mode is untouched.
+  const localSchemaX = computeSchemaX(structured, evidence, fastDetectors.schema);
+  const looksCleanLocally = fastDetectors.safety.length === 0 && localSchemaX.evidenceSupport >= WELL_GROUNDED_THRESHOLD;
+
   let judgePromise = Promise.resolve(null);
-  if (input.mode === "DEEP" && isFirstPass) {
+  if (input.mode === "DEEP" && isFirstPass && !looksCleanLocally) {
     judgePromise = runJudge(input.responseText, evidence, provider);
   }
 
