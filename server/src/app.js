@@ -7,6 +7,7 @@ import { transcribeRouter } from "./routes/transcribe.js";
 import { policiesRouter } from "./routes/policies.js";
 import { reviewRouter } from "./routes/review.js";
 import { feedbackRouter } from "./routes/feedback.js";
+import { auditRouter } from "./routes/audit.js";
 
 /** Builds the Express app (no .listen) so it can be exercised directly in tests via Supertest. */
 export function createApp(provider) {
@@ -24,6 +25,7 @@ export function createApp(provider) {
   app.use("/api/v1/policies", policiesRouter);
   app.use("/api/v1/review", reviewRouter);
   app.use("/api/v1/feedback", feedbackRouter);
+  app.use("/api/v1/audit", auditRouter);
 
   app.use((req, res) => res.status(404).json({ error: "not found" }));
 
