@@ -20,8 +20,9 @@ services:
           property: connectionString
       - key: GEMINI_API_KEY
         sync: false
-      - key: CLIENT_ORIGIN
-        sync: false
+      # CLIENT_ORIGIN is optional (CORS falls back to open when unset). Set it in
+      # the Render dashboard if you want the preflight pinned to one origin —
+      # keeping it out of this file so a new sync:false var can't pause deploys.
       - key: PORT
         value: 10000
       - key: NODE_ENV
