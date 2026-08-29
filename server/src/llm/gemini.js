@@ -3,7 +3,21 @@ import { env } from "../config/env.js";
 import { localEmbed } from "./localEmbed.js";
 import { mapGeminiSafetyRatings } from "./geminiSafety.js";
 
-const MODEL = "gemini-2.5-flash";
+/**
+ * Pinned deliberately — do NOT float this to "latest".
+ *
+ * A governance gateway makes several model calls per user message (generation,
+ * regenerate retries, the EDIT/CLARIFY pass, the Judge, CBG counterfactuals), so
+ * model choice multiplies through the whole request. 2.5 Flash is the right point
+ * on that curve: fast and cheap enough that verification depth stays affordable,
+ * while still strong enough to act as an independent Judge.
+ *
+ * Pinning also keeps the audit trail honest — a trace records the model that
+ * produced a decision, which is meaningless if the identifier silently moves.
+ * Upgrading is a deliberate edit here, not a default.
+ */
+export const GEMINI_MODEL = "gemini-2.5-flash";
+const MODEL = GEMINI_MODEL;
 const DEFAULT_TIMEOUT_MS = 45_000;
 const DEFAULT_MAX_OUTPUT_TOKENS = 2_048;
 
@@ -18,6 +32,9 @@ function withTimeout(promise, timeoutMs, operation) {
 export class GeminiProvider {
   constructor(apiKey = env.GEMINI_API_KEY) {
     this.client = new GoogleGenAI({ apiKey });
+    // Exposed so the audit trace records the model that actually ran, instead of
+    // a second hardcoded copy of the name that can drift out of sync with this one.
+    this.model = GEMINI_MODEL;
   }
 
   async generate(prompt, opts = {}) {

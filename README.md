@@ -22,10 +22,21 @@ POST /api/v1/generate
   -> Risk Engine combines metrics + hard gates + Judge output (DEEP only) + policy
      -> risk_level + action + reasons
   -> Action Handler executes (regenerate loop, max_retries=2, with a corrective feedback prompt;
-     escalates to BLOCK/HUMAN_REVIEW if still failing)
+     escalates to BLOCK/HUMAN_REVIEW if still failing. An EDIT_CLARIFY rewrite is re-verified
+     once and can only escalate the verdict, never soften it)
   -> Audit Engine writes the full trace to Postgres
   -> response returned to caller
 ```
+
+### Model pinning
+
+`GEMINI_MODEL` in `server/src/llm/gemini.js` is the **single** place a model name appears, and it
+is pinned to `gemini-2.5-flash` on purpose — do not float it to "latest". A governance gateway
+makes several model calls per user message (generation, regenerate retries, the EDIT/CLARIFY pass,
+the Judge, CBG counterfactuals), so model choice multiplies through the whole request; 2.5 Flash is
+cheap and fast enough to keep verification depth affordable while still being a credible
+independent Judge. The audit trace reads the model off the provider rather than repeating the
+literal, so a trace can never claim a model that didn't run.
 
 ### Core metrics (`server/src/metrics/`)
 
@@ -42,17 +53,48 @@ POST /api/v1/generate
 - **CBG** (Counterfactual Bias Gap) — only run on ~8% sampled traffic or explicitly high-risk requests
 - **SHS** (Safety/Harm Score, 0-5) — Layer 1 deterministic rules, Layer 2 AI-Judge in DEEP mode
 - **SAS** (Semantic Anomaly Score, auxiliary) — embedding-distance signal, feeds risk but never gates alone
+- **VCO** (Verification Cost Overhead, system-level) — `governance tokens ÷ baseline tokens`.
+  Baseline is the single call the app would have made with no gateway; governance is everything
+  TripWire added (regenerate retries, EDIT/CLARIFY, the Judge, CBG). Per-request in the generate
+  response, aggregated at `GET /api/v1/stats`. See `server/src/utils/tokens.js`.
+
+### Embeddings
+
+`server/src/llm/localEmbed.js` — a deterministic 256-dim hashed embedding (unigrams + bigrams,
+sublinear TF, signed hashing, stopword removal, light stemming). No embeddings API is ever called:
+`embed()` runs once per response, once per evidence chunk, and twice more for CBG, so metering it
+would turn one quota-relevant request into dozens.
+
+It is deliberately a **pure function of its input**. Chunk embeddings are written once at seed time
+and compared against a query embedding computed at runtime, so anything corpus-dependent (true IDF,
+a learned vocabulary) would drift between those two moments. Changing the embedder invalidates every
+stored vector — `npm run seed` detects the dimension mismatch and re-embeds, and the retrieval path
+logs a loud warning if it ever sees a stale corpus (cosine returns 0 on a dimension mismatch, which
+would otherwise look like a metric bug rather than a data problem).
 
 ### Storage: Postgres via Prisma (not MongoDB)
 
 `server/prisma/schema.prisma` — `Policy`, `AuditTrace`, `HumanReview`, `FeedbackRecord`,
 `EvidenceDocument`, `EvidenceChunk`. Evidence similarity is cosine similarity computed in
-application code (`server/src/evidence/store.ts`) against a `Json` float array — no pgvector
+application code (`server/src/evidence/store.js`) against a `Json` float array — no pgvector
 extension required for this MVP.
+
+### Dashboard (`client/src/pages/`)
+
+- **Inspector** — chat surface plus the per-request trace: verdict, policy, mode, reasons, the 10
+  core metrics with SchemaX's ES/SQ/SC breakdown, retrieved evidence, Judge rationale, and the
+  per-request cost strip (latency, baseline vs governance tokens, VCO). Carries the four
+  one-click demo scenarios from spec point 38.
+- **Efficiency & Cost** — latency P50/P95, VCO, regeneration / Judge-invocation / block rates,
+  verification-depth distribution, baseline-vs-governance token split.
+- **Audit Trace** — filterable trace list; select one to reconstruct the full decision.
+- **Human Review** — the escalation queue.
+- **Feedback & Metrics** — precision/recall/FPR/FNR and the confusion matrix.
+- **Settings & Policies** — hard gates, threshold rules, risk tolerance and geography.
 
 ### Reversed false-positive/false-negative convention (explicit product requirement)
 
-`server/src/feedback/feedbackEngine.ts` implements this intentionally **reversed** from the
+`server/src/feedback/feedbackEngine.js` implements this intentionally **reversed** from the
 textbook "flag = positive" convention:
 
 - system **BLOCK** + human **ALLOW** = **false_negative**
@@ -67,7 +109,12 @@ This is a deliberate deviation, not a bug — do not "fix" it back to the standa
   look for `// ponytail:` comments marking where.
 - **pgvector**: cosine similarity is computed in application code instead (see above).
 - **shadcn/ui CLI scaffolding**: the dashboard uses a handful of hand-written Tailwind primitives
-  (`client/src/components/ui.tsx`) instead.
+  (`client/src/components/ui.jsx`) instead.
+- **A real sentence-transformer**: a local ONNX MiniLM would beat the hashed embedder comfortably,
+  at the cost of a ~90MB model download and a native dependency. Swap it in behind `localEmbed`'s
+  signature and re-seed.
+- **Auth**: the governance endpoints (`PATCH /policies/:id`, `POST /review/:id/decision`) are
+  unauthenticated and CORS is open. Fine for a local prototype, not for a shared deployment.
 
 ## Running locally
 
@@ -102,7 +149,7 @@ npm install
 npm run dev
 ```
 
-The client dev server proxies `/api/*` to `http://localhost:4000` (see `client/vite.config.ts`,
+The client dev server proxies `/api/*` to `http://localhost:4000` (see `client/vite.config.js`,
 override with `VITE_API_URL`).
 
 ## Testing
@@ -119,8 +166,10 @@ classification convention.
 
 ## Deployment
 
-- **Server**: `server/railway.json` is a minimal Railway config (Nixpacks build, `prisma db push`
-  + `npm start` on deploy). Set `DATABASE_URL` and `GEMINI_API_KEY` as Railway env vars.
+- **Server**: `render.yaml` (repo root) is the current config — a Render web service rooted at
+  `server/`, running `prisma db push && npm run seed && npm start`, plus a free Postgres instance.
+  `server/railway.json` is the older Railway config, kept as an alternative. Either way, set
+  `DATABASE_URL` and `GEMINI_API_KEY` as environment variables.
 - **Client**: deploys to Vercel using its built-in Vite preset — no extra config needed. Set
   `VITE_API_URL` to the deployed server URL as a Vercel environment variable.
 

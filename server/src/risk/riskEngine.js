@@ -1,4 +1,4 @@
-const ACTION_SEVERITY = {
+export const ACTION_SEVERITY = {
   ALLOW: 0,
   EDIT_CLARIFY: 1,
   REGENERATE: 2,

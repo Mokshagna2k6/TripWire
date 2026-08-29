@@ -11,6 +11,9 @@ const updateSchema = z.object({
   hardGates: z.record(metricName, z.number().finite()).optional(),
   allowedActions: z.array(actionName).min(1).optional(),
   riskTolerance: z.enum(["low", "medium", "high"]).optional(),
+  // Part of the governance context the dashboard surfaces (spec 26/39); it was
+  // a required column with no way to change it after seeding.
+  geography: z.string().min(1).max(64).optional(),
 }).strict();
 
 export const policiesRouter = Router();
