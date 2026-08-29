@@ -6,6 +6,7 @@ import { loadPolicy } from "./policy/policyEngine.js";
 import { retrieveEvidence } from "./evidence/store.js";
 import { evaluateRisk, ACTION_SEVERITY } from "./risk/riskEngine.js";
 import { recordAuditTrace } from "./audit/auditEngine.js";
+import { logger } from "./logger.js";
 import { prisma } from "./db.js";
 import {
   MAX_REGENERATE_RETRIES,
@@ -38,20 +39,33 @@ export async function runPipeline(req, provider) {
   let decision;
   let verification;
 
+  // Per-stage wall-clock, so "why is a request slow" is answerable from the trace
+  // instead of guessed at. Cheap Date.now() deltas, accumulated across retries.
+  const timings = { retrievalMs: 0, generationMs: 0, verificationMs: 0, auditMs: 0 };
+  const since = (t) => Date.now() - t;
+
   // Retrieve before generation so STANDARD/DEEP responses are actually grounded.
   // FAST remains a low-cost path with no retrieval.
-  const initialEvidence = preRisk.mode === "FAST" ? [] : await retrieveEvidence(req.domain, prompt, provider);
+  let initialEvidence = [];
+  if (preRisk.mode !== "FAST") {
+    const t = Date.now();
+    initialEvidence = await retrieveEvidence(req.domain, prompt, provider);
+    timings.retrievalMs = since(t);
+  }
   const optimizedPrompt = optimizeContext(prompt, initialEvidence);
 
   // Attachments only go on the initial call — regenerate retries are corrective text
   // feedback about the response already given, not a fresh look at the same file.
+  let t = Date.now();
   const first = await provider.generate(optimizedPrompt, { attachments: req.attachments });
+  timings.generationMs += since(t);
   responseText = first.text;
   let geminiSafetyHits = first.geminiSafetyHits ?? [];
   baselineTokens = addTokens(baselineTokens, first.tokens);
 
   // eslint-disable-next-line no-constant-condition
   while (true) {
+    t = Date.now();
     verification = await runVerification(
       {
         domain: req.domain,
@@ -67,6 +81,7 @@ export async function runPipeline(req, provider) {
       },
       provider
     );
+    timings.verificationMs += since(t);
 
     // Judge/CBG cost, accumulated per pass rather than read once — the loop
     // reassigns `verification` and would otherwise drop earlier passes' usage.
@@ -88,7 +103,9 @@ export async function runPipeline(req, provider) {
 
     regenerationCount++;
     const correctivePrompt = buildCorrectiveFeedbackPrompt(req.prompt, responseText, decision.reasons);
+    t = Date.now();
     const retry = await provider.generate(optimizeContext(correctivePrompt, verification.evidence));
+    timings.generationMs += since(t);
     responseText = retry.text;
     geminiSafetyHits = retry.geminiSafetyHits ?? [];
     // A retry exists only because governance rejected the first answer.
@@ -97,7 +114,9 @@ export async function runPipeline(req, provider) {
 
   if (decision.action === "EDIT_CLARIFY") {
     const editPrompt = buildEditClarifyPrompt(req.prompt, responseText, decision.reasons);
+    t = Date.now();
     const edited = await provider.generate(editPrompt);
+    timings.generationMs += since(t);
     responseText = edited.text;
     governanceTokens = addTokens(governanceTokens, edited.tokens);
 
@@ -109,6 +128,7 @@ export async function runPipeline(req, provider) {
     // than EDIT_CLARIFY we adopt the stricter verdict; if it scores better we keep
     // EDIT_CLARIFY rather than promoting to ALLOW, because the reasons that
     // triggered the edit are still the honest account of what happened.
+    t = Date.now();
     const editVerification = await runVerification(
       {
         domain: req.domain,
@@ -121,9 +141,13 @@ export async function runPipeline(req, provider) {
         expectedFormat: req.expectedFormat,
         initialEvidence,
         geminiSafetyHits: edited.geminiSafetyHits ?? [],
+        // Judge/CBG already ran on the pre-edit response; a light wording revision
+        // doesn't warrant paying for them again. The safety re-gate still runs.
+        skipExpensiveChecks: true,
       },
       provider
     );
+    timings.verificationMs += since(t);
     governanceTokens = addTokens(governanceTokens, editVerification.governanceTokens);
 
     const editDecision = evaluateRisk(editVerification.metrics, policy, editVerification.hardGate);
@@ -162,7 +186,7 @@ export async function runPipeline(req, provider) {
     vco,
   };
 
-  const trace = await recordAuditTrace({
+  const tracePayload = {
     requestId,
     policyId: policy.id,
     // Read from the provider rather than repeating the model name here, so the
@@ -171,7 +195,8 @@ export async function runPipeline(req, provider) {
     // assumed to be Gemini — importing the Gemini module here would also drag
     // API-key validation into every consumer, including the test harness.
     model: provider.model ?? "unknown",
-    promptMeta: { domain: req.domain, preRiskMode: preRisk.mode, preRiskReasons: preRisk.reasons },
+    // timings nested here (not a new column) so this needs no Prisma migration.
+    promptMeta: { domain: req.domain, preRiskMode: preRisk.mode, preRiskReasons: preRisk.reasons, timings },
     rawResponse: responseText,
     structuredRepresentation: verification.structured,
     metrics: verification.metrics,
@@ -183,9 +208,23 @@ export async function runPipeline(req, provider) {
     tokens,
     finalOutcome,
     humanReviewData,
-  });
+  };
 
-  const humanReviewId = trace.humanReview?.id;
+  // HUMAN_REVIEW needs the created review id in the response, so that path waits
+  // on the write. Every other outcome fires the audit write and returns straight
+  // away — the trace is observability, the user shouldn't wait on a Postgres
+  // insert of a large JSON blob to see their answer.
+  let humanReviewId;
+  if (decision.action === "HUMAN_REVIEW") {
+    const auditStart = Date.now();
+    const trace = await recordAuditTrace(tracePayload);
+    timings.auditMs = Date.now() - auditStart;
+    humanReviewId = trace.humanReview?.id;
+  } else {
+    recordAuditTrace(tracePayload).catch((err) =>
+      logger.error({ err, requestId }, "audit trace write failed (response already delivered)")
+    );
+  }
 
   return {
     requestId,
@@ -204,6 +243,7 @@ export async function runPipeline(req, provider) {
     latencyMs,
     tokens,
     vco,
+    timings,
     policyName: policy.domain,
   };
 }

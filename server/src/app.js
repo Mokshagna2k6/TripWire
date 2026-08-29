@@ -14,7 +14,12 @@ import { statsRouter } from "./routes/stats.js";
 export function createApp(provider) {
   const app = express();
 
-  app.use(cors());
+  // maxAge lets the browser cache the CORS preflight for a day instead of
+  // re-issuing an OPTIONS round-trip before every POST /generate. origin is
+  // pinned to the deployed client when CLIENT_ORIGIN is set, open otherwise.
+  // Read straight from process.env (like Prisma reads DATABASE_URL) so building
+  // the app in tests doesn't require the full validated env.
+  app.use(cors({ origin: process.env.CLIENT_ORIGIN || true, maxAge: 86400 }));
   // 15mb: base64-encoded short voice clips for /transcribe are the largest payloads this API accepts.
   app.use(express.json({ limit: "15mb" }));
   app.use(pinoHttp({ logger }));

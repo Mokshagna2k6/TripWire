@@ -4,7 +4,14 @@ services:
     runtime: node
     rootDir: server
     plan: free
+    # Render's own probe hits this; combined with the GitHub Actions keep-alive
+    # pinger (.github/workflows/keepalive.yml) it keeps the free instance from
+    # spinning down and cold-starting (~50-130s) on the next request.
+    healthCheckPath: /health
     buildCommand: npm install && npx prisma generate
+    # db push + seed run on every boot (free plan has no preDeploy hook). Both are
+    # idempotent no-ops once the schema and corpus are stable, so this is cheap
+    # after the first deploy.
     startCommand: npx prisma db push --skip-generate && npm run seed && npm start
     envVars:
       - key: DATABASE_URL
@@ -12,6 +19,8 @@ services:
           name: tripwire-db
           property: connectionString
       - key: GEMINI_API_KEY
+        sync: false
+      - key: CLIENT_ORIGIN
         sync: false
       - key: PORT
         value: 10000

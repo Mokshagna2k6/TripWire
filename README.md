@@ -28,6 +28,17 @@ POST /api/v1/generate
   -> response returned to caller
 ```
 
+### Latency
+
+Every request makes at least one Gemini call, so it will never be instant, but the path is tuned:
+
+- **Thinking is disabled** (`thinkingConfig: { thinkingBudget: 0 }` in `server/src/llm/gemini.js`) on generation, the Judge, and transcription. 2.5 Flash's default thinking added 2–5s per call for no benefit here — the gateway's own verification layer is the quality backstop.
+- **The audit write is fire-and-forget** except on `HUMAN_REVIEW` (which needs the review id back). The trace is observability; the user doesn't wait on a Postgres insert.
+- **The rate limiter** bursts to 8 tokens, refilling 1 per 3s (was 1 per 7s) — a multi-call DEEP request no longer serializes into 7s steps.
+- **`.github/workflows/keepalive.yml`** pings `/health` every 10 min so the Render free instance doesn't spin down and cold-start (~50–130s) on the next real request. `render.yaml` also sets `healthCheckPath: /health`.
+- **CORS** is pinned to `CLIENT_ORIGIN` (when set) with `maxAge: 86400`, so the browser stops re-issuing an `OPTIONS` preflight before every `POST`.
+- Per-stage timings (`retrievalMs`, `generationMs`, `verificationMs`, `auditMs`) are in every generate response and on the Efficiency page, so "why was that slow" is answerable at a glance.
+
 ### Model pinning
 
 `GEMINI_MODEL` in `server/src/llm/gemini.js` is the **single** place a model name appears, and it

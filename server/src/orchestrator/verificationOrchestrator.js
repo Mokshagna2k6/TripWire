@@ -69,13 +69,20 @@ export async function runVerification(input, provider) {
   const localSchemaX = computeSchemaX(structured, evidence, fastDetectors.schema);
   const looksCleanLocally = fastDetectors.safety.length === 0 && localSchemaX.evidenceSupport >= WELL_GROUNDED_THRESHOLD;
 
+  // Post-EDIT_CLARIFY re-verification passes this: the Judge and CBG already ran
+  // on the pre-edit response, and the edit only lightly revises wording, so
+  // paying for another Judge/CBG LLM call there is not worth the latency. The
+  // cheap safety re-gate (PII/secret/safety detectors + hard gate above) still
+  // runs and can still escalate.
+  const skipExpensive = input.skipExpensiveChecks === true;
+
   let judgePromise = Promise.resolve(null);
-  if (input.mode === "DEEP" && isFirstPass && !looksCleanLocally) {
+  if (!skipExpensive && input.mode === "DEEP" && isFirstPass && !looksCleanLocally) {
     judgePromise = runJudge(input.responseText, evidence, provider);
   }
 
   let cbgPromise = Promise.resolve(null);
-  if (isFirstPass && hasProtectedAttribute(input.originalPrompt)) {
+  if (!skipExpensive && isFirstPass && hasProtectedAttribute(input.originalPrompt)) {
     const sample = stableSample(input.requestId);
     const isDeep = input.mode === "DEEP";
     if (shouldSampleCBG(isDeep, sample)) {
