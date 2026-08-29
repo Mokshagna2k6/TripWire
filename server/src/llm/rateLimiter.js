@@ -156,6 +156,8 @@ export function withRateLimit(provider, { minIntervalMs = MIN_INTERVAL_MS, maxRe
   }
 
   return {
+    // Forwarded, not re-declared — the wrapper must not hide which model is in use.
+    model: provider.model,
     generate: (...args) => withRetry(() => provider.generate(...args)),
     transcribe: (...args) => withRetry(() => provider.transcribe(...args)),
     embed: (...args) => provider.embed(...args),
