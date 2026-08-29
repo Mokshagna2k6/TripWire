@@ -26,7 +26,7 @@ export default function Review() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="h-full overflow-y-auto p-6 space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>
           <h2 className="text-base font-bold text-slate-900">Human Moderation & Review Queue</h2>

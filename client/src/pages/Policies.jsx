@@ -19,21 +19,44 @@ export default function Policies() {
 
   useEffect(load, []);
 
-  async function saveThreshold(policy, index, newValue) {
-    const key = `${policy.id}:th:${index}`;
-    const thresholds = policy.thresholds.map((t, i) => (i === index ? { ...t, value: newValue } : t));
-    await api.updatePolicy(policy.id, { thresholds });
+  /**
+   * Every input is controlled off `editing`, falling back to the server value.
+   * They used to be uncontrolled `defaultValue` inputs whose pending edits
+   * outlived the `load()` refetch, so a stale entry could be written to a
+   * different threshold than the one that was typed into.
+   */
+  function editedValue(key, serverValue) {
+    return editing[key] ?? String(serverValue);
+  }
+
+  function markSaved(key) {
+    // Drop the pending edit so the refetched server value becomes the source of truth.
+    setEditing((s) => {
+      const next = { ...s };
+      delete next[key];
+      return next;
+    });
     setSavedKey(key);
     setTimeout(() => setSavedKey(null), 2000);
     load();
   }
 
+  async function saveThreshold(policy, index, newValue) {
+    const key = `${policy.id}:th:${index}`;
+    const thresholds = policy.thresholds.map((t, i) => (i === index ? { ...t, value: newValue } : t));
+    await api.updatePolicy(policy.id, { thresholds });
+    markSaved(key);
+  }
+
   async function saveHardGate(policy, metric, newValue) {
     const key = `${policy.id}:hg:${metric}`;
     await api.updatePolicy(policy.id, { hardGates: { ...policy.hardGates, [metric]: newValue } });
-    setSavedKey(key);
-    setTimeout(() => setSavedKey(null), 2000);
-    load();
+    markSaved(key);
+  }
+
+  async function saveGovernance(policy, patch) {
+    await api.updatePolicy(policy.id, patch);
+    markSaved(`${policy.id}:gov`);
   }
 
   if (loading && policies.length === 0) {
@@ -48,7 +71,7 @@ export default function Policies() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="h-full overflow-y-auto p-6 space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>
           <h2 className="text-base font-bold text-slate-900">Governance Policies & Thresholds</h2>
@@ -85,6 +108,57 @@ export default function Policies() {
               </div>
             </div>
 
+            {/* Governance context (spec 26/39): domain, geography and risk tolerance
+                are what the policy applies *to*, and drive pre-risk routing depth. */}
+            <div className="mb-5 flex flex-wrap items-end gap-3 rounded-lg border border-slate-200 bg-slate-50/40 p-4">
+              <div>
+                <label className="block text-2xs font-semibold uppercase tracking-wider text-slate-400 mb-1">
+                  Risk Tolerance
+                </label>
+                <select
+                  value={editedValue(`${p.id}:tol`, p.riskTolerance)}
+                  onChange={(e) => setEditing((s) => ({ ...s, [`${p.id}:tol`]: e.target.value }))}
+                  className="rounded border border-slate-200 bg-white px-2 py-1 text-xs text-slate-800 focus:border-indigo-500 focus:outline-hidden"
+                >
+                  {["low", "medium", "high"].map((t) => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-2xs font-semibold uppercase tracking-wider text-slate-400 mb-1">
+                  Geography
+                </label>
+                <input
+                  value={editedValue(`${p.id}:geo`, p.geography ?? "")}
+                  onChange={(e) => setEditing((s) => ({ ...s, [`${p.id}:geo`]: e.target.value }))}
+                  placeholder="e.g. IN"
+                  className="w-28 rounded border border-slate-200 bg-white px-2 py-1 text-xs text-slate-800 focus:border-indigo-500 focus:outline-hidden"
+                />
+              </div>
+
+              <Button
+                size="sm"
+                variant={savedKey === `${p.id}:gov` ? "success" : "secondary"}
+                onClick={() =>
+                  saveGovernance(p, {
+                    riskTolerance: editedValue(`${p.id}:tol`, p.riskTolerance),
+                    geography: editedValue(`${p.id}:geo`, p.geography ?? ""),
+                  })
+                }
+              >
+                {savedKey === `${p.id}:gov` ? <Check className="h-3 w-3" /> : "Save context"}
+              </Button>
+
+              <p className="w-full text-2xs text-slate-500">
+                Lowering risk tolerance raises verification depth for this domain — a low-tolerance policy pushes
+                requests toward DEEP mode before the model is even called.
+              </p>
+            </div>
+
             {/* Hard Gates Section */}
             <div className="mb-5 rounded-lg bg-rose-50/40 border border-rose-100 p-4">
               <div className="flex items-center gap-1.5 text-xs font-semibold text-rose-900 mb-2">
@@ -109,7 +183,7 @@ export default function Policies() {
                       <input
                         type="number"
                         step="0.1"
-                        defaultValue={value}
+                        value={editedValue(key, value)}
                         className="w-16 rounded border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-mono font-medium text-slate-900 focus:border-indigo-500 focus:bg-white focus:outline-hidden"
                         onChange={(e) => setEditing((s) => ({ ...s, [key]: e.target.value }))}
                       />
@@ -160,7 +234,7 @@ export default function Policies() {
                         <input
                           type="number"
                           step="0.1"
-                          defaultValue={t.value}
+                          value={editedValue(key, t.value)}
                           className="w-20 rounded border border-slate-200 bg-white px-2 py-1 text-xs font-mono text-slate-800 focus:border-indigo-500 focus:outline-hidden"
                           onChange={(e) => setEditing((s) => ({ ...s, [key]: e.target.value }))}
                         />
