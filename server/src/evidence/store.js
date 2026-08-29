@@ -1,6 +1,22 @@
 import { prisma } from "../db.js";
+import { logger } from "../logger.js";
+import { DIMS } from "../llm/localEmbed.js";
 
 const MAX_RETRIEVAL_CANDIDATES = 500;
+
+// Chunk embeddings are written once at seed time. If the embedder changes shape,
+// every stored vector is stale and cosineSimilarity quietly returns 0 for all of
+// them — which surfaces as "SchemaX suddenly scores nothing" rather than as a
+// data problem. Warn once, loudly, with the fix.
+let warnedStaleEmbeddings = false;
+function warnIfStale(storedLength) {
+  if (warnedStaleEmbeddings || storedLength === DIMS) return;
+  warnedStaleEmbeddings = true;
+  logger.warn(
+    { storedDims: storedLength, expectedDims: DIMS },
+    "stored evidence embeddings have the wrong dimensionality — all similarity scores will be 0. Re-run `npm run seed`."
+  );
+}
 
 function queryTerms(text) {
   return [...new Set(text.toLowerCase().match(/[a-z0-9]{4,}/g) ?? [])].slice(0, 12);
@@ -40,6 +56,7 @@ export async function retrieveEvidence(domain, queryText, provider, topK = 4) {
 
   const scored = [];
   for (const chunk of chunks) {
+    warnIfStale(chunk.embedding?.length ?? 0);
     scored.push({
       chunkId: chunk.id,
       documentId: chunk.document.id,
