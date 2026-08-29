@@ -69,7 +69,13 @@ export function Button({
   );
 }
 
-export function Table({ headers, rows }) {
+/**
+ * `onRowClick` receives the row index and makes rows keyboard-selectable —
+ * needed by the audit list, where a row is the entry point into a full trace.
+ * `selectedIndex` highlights the active row.
+ */
+export function Table({ headers, rows, onRowClick, selectedIndex }) {
+  const interactive = typeof onRowClick === "function";
   return (
     <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
       <table className="w-full text-left text-sm">
@@ -84,7 +90,24 @@ export function Table({ headers, rows }) {
         </thead>
         <tbody className="divide-y divide-slate-100">
           {rows.map((row, i) => (
-            <tr key={i} className="hover:bg-slate-50/50 transition-colors">
+            <tr
+              key={i}
+              className={`transition-colors ${interactive ? "cursor-pointer" : ""} ${
+                selectedIndex === i ? "bg-indigo-50/70" : "hover:bg-slate-50/50"
+              }`}
+              onClick={interactive ? () => onRowClick(i) : undefined}
+              tabIndex={interactive ? 0 : undefined}
+              onKeyDown={
+                interactive
+                  ? (e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        onRowClick(i);
+                      }
+                    }
+                  : undefined
+              }
+            >
               {row.map((cell, j) => (
                 <td key={j} className="px-4 py-3 text-slate-700">
                   {cell}
