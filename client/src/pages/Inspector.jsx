@@ -414,7 +414,10 @@ export default function Inspector() {
     setDecidingId(msgId);
     try {
       const { review } = await api.decideReview(humanReviewId, decision);
-      const released = decision === "ALLOW" ? review?.response ?? "" : "";
+      // Trust the server's standing decision — on a 409 (already decided) it may
+      // differ from what was just clicked.
+      const settled = review?.decision ?? decision;
+      const released = settled === "ALLOW" ? review?.response ?? "" : "";
       setMessages((prev) => {
         const next = prev.map((m) =>
           m.id === msgId
@@ -423,9 +426,9 @@ export default function Inspector() {
                 content: released,
                 result: {
                   ...m.result,
-                  action: decision === "ALLOW" ? "ALLOW" : "BLOCK",
-                  reviewResolved: decision,
-                  response: decision === "ALLOW" ? released : null,
+                  action: settled === "ALLOW" ? "ALLOW" : "BLOCK",
+                  reviewResolved: settled,
+                  response: settled === "ALLOW" ? released : null,
                 },
               }
             : m
@@ -434,7 +437,7 @@ export default function Inspector() {
         if (activeId) {
           saveSessions(
             loadSessions().map((s) =>
-              s.id === activeId ? { ...s, messages: next, lastVerdict: decision === "ALLOW" ? "ALLOW" : "BLOCK" } : s
+              s.id === activeId ? { ...s, messages: next, lastVerdict: settled === "ALLOW" ? "ALLOW" : "BLOCK" } : s
             )
           );
         }

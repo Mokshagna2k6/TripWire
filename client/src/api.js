@@ -24,7 +24,9 @@ async function request(path, options) {
   } finally {
     clearTimeout(timer);
   }
-  if (!res.ok && res.status !== 202 && res.status !== 403) {
+  // 202 (HUMAN_REVIEW) / 403 (BLOCK) carry a normal verdict body; 409 (a review
+  // already decided) carries the existing decision so the UI can reconcile.
+  if (!res.ok && res.status !== 202 && res.status !== 403 && res.status !== 409) {
     throw new Error(`request failed: ${res.status}`);
   }
   return res.json();
