@@ -64,12 +64,19 @@ class TokenBucket {
 
 function isDailyQuotaExhausted(err) {
   const msg = err?.message || "";
-  return /PerDay/i.test(msg);
+  // Only the *daily* cap is fatal — a per-minute 429 is retryable.
+  return /PerDay/i.test(msg) && !/PerMinute/i.test(msg);
 }
 
 function isTransient(err) {
+  if (isDailyQuotaExhausted(err)) return false;
+  // @google/genai throws ApiError with a numeric .status; the message is the raw
+  // API body ("RESOURCE_EXHAUSTED", "Quota exceeded", "PerMinute", …) and does
+  // not reliably contain the literal status code, so check both.
+  const status = err?.status ?? err?.code;
+  if (status === 429 || status === 503 || status === 500 || status === 502 || status === 504) return true;
   const msg = err?.message || "";
-  return /429|503|RESOURCE_EXHAUSTED|UNAVAILABLE|high demand/i.test(msg) && !isDailyQuotaExhausted(err);
+  return /\b(429|500|502|503|504)\b|RESOURCE_EXHAUSTED|UNAVAILABLE|high demand|quota exceeded|rate limit|too many requests|overloaded|try again/i.test(msg);
 }
 
 function sleep(ms) {

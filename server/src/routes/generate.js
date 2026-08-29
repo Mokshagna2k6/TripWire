@@ -44,6 +44,15 @@ export function generateRouter(provider) {
       if (err?.code === "LLM_QUEUE_FULL") return res.status(429).json({ error: "The gateway is busy; retry shortly." });
       if (err?.code === "CIRCUIT_BREAKER_OPEN" || /circuit breaker/i.test(err?.message ?? "")) return res.status(503).json({ error: "The upstream model is temporarily unavailable; retry shortly." });
       if (/timed out/i.test(err?.message ?? "")) return res.status(504).json({ error: "The upstream model timed out; retry shortly." });
+      // A Gemini rate-limit / overload error that survived the retry loop: report
+      // it as a 429 the client can retry, not an opaque 500.
+      const status = err?.status ?? err?.code;
+      if (status === 429 || /RESOURCE_EXHAUSTED|quota exceeded|rate limit|too many requests|429/i.test(err?.message ?? "")) {
+        return res.status(429).json({ error: "The model is rate-limited right now (free-tier quota). Wait a few seconds and retry." });
+      }
+      if (status === 503 || status === 500 || /overloaded|UNAVAILABLE|internal error/i.test(err?.message ?? "")) {
+        return res.status(503).json({ error: "The upstream model is temporarily unavailable; retry shortly." });
+      }
       return res.status(500).json({ error: "internal error running trust gateway pipeline" });
     }
   });
