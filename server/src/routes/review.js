@@ -41,5 +41,9 @@ reviewRouter.post("/:id/decision", asyncHandler(async (req, res) => {
     return { updated, feedback };
   });
 
-  res.json({ review: updated, feedback });
+  // The withheld answer is only released to the caller when the reviewer approves.
+  res.json({
+    review: { ...updated, response: parsed.data.decision === "ALLOW" ? updated.response : null },
+    feedback,
+  });
 }));
