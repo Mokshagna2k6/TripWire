@@ -1,9 +1,11 @@
-// 3s/token with a burst capacity of 8 (below). The old 7s/token was far more
-// conservative than Gemini's real limits and serialized every multi-call request
-// (a DEEP pass makes 4-6 model calls) into 7s steps. Genuine 429s are still
-// absorbed by the retry/backoff + circuit breaker below.
-const MIN_INTERVAL_MS = 3000;
-const BUCKET_CAPACITY = 8;
+// Tuned to gemini-2.5-flash-lite's free-tier limit of 15 requests/min. 4.5s/token
+// is ~13/min — just under the ceiling, so sustained traffic paces itself in our
+// bucket instead of overshooting into Gemini's 429 + the 2/4/8s retry backoff
+// (which is far worse than waiting for a token). The burst capacity of 6 lets a
+// single multi-call request (DEEP = 4-6 calls) run without stalling.
+// The old 7s/token predated Flash-Lite and serialized every request into 7s steps.
+const MIN_INTERVAL_MS = 4500;
+const BUCKET_CAPACITY = 6;
 const MAX_RETRIES = 3;
 const BASE_BACKOFF_MS = 2000;
 const MAX_QUEUE_DEPTH = 50;
