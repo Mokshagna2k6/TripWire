@@ -8,25 +8,24 @@ import { mapGeminiSafetyRatings } from "./geminiSafety.js";
  *
  * A governance gateway makes several model calls per user message (generation,
  * regenerate retries, the EDIT/CLARIFY pass, the Judge, CBG counterfactuals), so
- * model choice multiplies through the whole request. 2.5 Flash is the right point
- * on that curve: fast and cheap enough that verification depth stays affordable,
- * while still strong enough to act as an independent Judge.
+ * model choice multiplies through the whole request. 2.5 Flash-Lite is the right
+ * point on that curve: the fastest 2.5 model, thinking off by default, and the
+ * highest free-tier rate limit (15 RPM vs 10 for Flash) — which matters when one
+ * user message can be 4-6 calls. Still capable enough to act as an independent
+ * Judge for structured-JSON classification.
  *
  * Pinning also keeps the audit trail honest — a trace records the model that
  * produced a decision, which is meaningless if the identifier silently moves.
  * Upgrading is a deliberate edit here, not a default.
  */
-export const GEMINI_MODEL = "gemini-2.5-flash";
+export const GEMINI_MODEL = "gemini-2.5-flash-lite";
 const MODEL = GEMINI_MODEL;
 const DEFAULT_TIMEOUT_MS = 45_000;
 const DEFAULT_MAX_OUTPUT_TOKENS = 1_024;
 
-// gemini-2.5-flash "thinks" before answering by default, which adds seconds of
-// latency and hidden output tokens to every call — even trivial ones. A
-// governance gateway makes several model calls per user message, so that tax
-// multiplies. Budget 0 turns thinking off. The gateway's own verification layer
-// (SchemaX/UIS/CEG + the Judge) is the quality backstop, so the model doesn't
-// need to self-deliberate here.
+// Belt-and-suspenders: Flash-Lite doesn't think by default, but pin the budget to
+// 0 so an SDK/default change can't silently reintroduce the 2-5s "thinking" delay
+// on every call. The gateway's own verification layer is the quality backstop.
 const NO_THINKING = { thinkingBudget: 0 };
 
 function withTimeout(promise, timeoutMs, operation) {
