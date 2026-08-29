@@ -115,6 +115,7 @@ export default function Inspector() {
   const [messages, setMessages] = useState([]);
   const [expandedTraceId, setExpandedTraceId] = useState(null);
   const [copiedId, setCopiedId] = useState(null);
+  const [decidingId, setDecidingId] = useState(null);
   const [recording, setRecording] = useState(false);
   const [transcribing, setTranscribing] = useState(false);
   const [voiceError, setVoiceError] = useState(null);
@@ -407,6 +408,45 @@ export default function Inspector() {
     setTimeout(() => setCopiedId(null), 2000);
   }
 
+  // Resolve a HUMAN_REVIEW verdict inline in the chat. Approve -> the withheld
+  // answer is released into the conversation; Reject -> it stays blocked here.
+  async function resolveReview(msgId, humanReviewId, decision) {
+    setDecidingId(msgId);
+    try {
+      const { review } = await api.decideReview(humanReviewId, decision);
+      const released = decision === "ALLOW" ? review?.response ?? "" : "";
+      setMessages((prev) => {
+        const next = prev.map((m) =>
+          m.id === msgId
+            ? {
+                ...m,
+                content: released,
+                result: {
+                  ...m.result,
+                  action: decision === "ALLOW" ? "ALLOW" : "BLOCK",
+                  reviewResolved: decision,
+                  response: decision === "ALLOW" ? released : null,
+                },
+              }
+            : m
+        );
+        const activeId = getActiveSessionId();
+        if (activeId) {
+          saveSessions(
+            loadSessions().map((s) =>
+              s.id === activeId ? { ...s, messages: next, lastVerdict: decision === "ALLOW" ? "ALLOW" : "BLOCK" } : s
+            )
+          );
+        }
+        return next;
+      });
+    } catch (e) {
+      setVoiceError(e instanceof Error ? e.message : "Review decision failed.");
+    } finally {
+      setDecidingId(null);
+    }
+  }
+
   const canSubmit = input.trim().length > 0 || attachments.length > 0;
 
   return (
@@ -527,6 +567,35 @@ export default function Inspector() {
                           <div className="text-sm leading-relaxed text-slate-800">
                             <ReactMarkdown components={MARKDOWN_COMPONENTS}>{msg.result.response}</ReactMarkdown>
                           </div>
+                        ) : msg.result.action === "HUMAN_REVIEW" && msg.result.humanReviewId && !msg.result.reviewResolved ? (
+                          <div className="rounded-xl bg-purple-50/70 border border-purple-200/80 p-3.5 text-xs text-purple-900">
+                            <div className="flex items-center gap-1.5 font-semibold">
+                              <ShieldAlert className="h-4 w-4 text-purple-600" />
+                              Held for your approval
+                            </div>
+                            <p className="mt-1 text-purple-800">
+                              The gateway flagged this response as high-risk and is holding it. Approve to release the
+                              answer into the chat, or reject to block it.
+                            </p>
+                            <div className="mt-3 flex items-center gap-2">
+                              <button
+                                onClick={() => resolveReview(msg.id, msg.result.humanReviewId, "ALLOW")}
+                                disabled={decidingId === msg.id}
+                                className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 font-semibold text-white hover:bg-emerald-500 disabled:opacity-50"
+                              >
+                                {decidingId === msg.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                                Approve & release
+                              </button>
+                              <button
+                                onClick={() => resolveReview(msg.id, msg.result.humanReviewId, "BLOCK")}
+                                disabled={decidingId === msg.id}
+                                className="inline-flex items-center gap-1.5 rounded-lg border border-rose-300 bg-white px-3 py-1.5 font-semibold text-rose-700 hover:bg-rose-50 disabled:opacity-50"
+                              >
+                                <X className="h-3.5 w-3.5" />
+                                Reject & block
+                              </button>
+                            </div>
+                          </div>
                         ) : (
                           <div className="rounded-xl bg-rose-50/70 border border-rose-200/80 p-3.5 text-xs text-rose-800">
                             <div className="flex items-center gap-1.5 font-semibold text-rose-900">
@@ -534,7 +603,9 @@ export default function Inspector() {
                               Response Withheld by Trust Gateway
                             </div>
                             <p className="mt-1 text-rose-700">
-                              Action was <strong>{msg.result.action}</strong> due to critical risk / safety policy violation.
+                              {msg.result.reviewResolved === "BLOCK"
+                                ? "You rejected this response in review — it was blocked."
+                                : <>Action was <strong>{msg.result.action}</strong> due to critical risk / safety policy violation.</>}
                             </p>
                           </div>
                         )}
