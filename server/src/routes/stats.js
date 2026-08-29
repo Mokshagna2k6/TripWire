@@ -67,6 +67,20 @@ statsRouter.get("/", asyncHandler(async (_req, res) => {
     if (mode in modeDistribution) modeDistribution[mode]++;
   }
 
+  // Per-stage timing averages (nested in promptMeta.timings by the pipeline).
+  // Older traces predate this and are skipped from the average.
+  const stageTotals = { retrievalMs: 0, generationMs: 0, verificationMs: 0, auditMs: 0 };
+  let timedCount = 0;
+  for (const t of traces) {
+    const tm = t.promptMeta?.timings;
+    if (!tm) continue;
+    timedCount++;
+    for (const k of Object.keys(stageTotals)) stageTotals[k] += tm[k] ?? 0;
+  }
+  const stageAverages = timedCount
+    ? Object.fromEntries(Object.entries(stageTotals).map(([k, v]) => [k, Math.round(v / timedCount)]))
+    : null;
+
   const actionDistribution = {};
   for (const t of traces) {
     actionDistribution[t.action] = (actionDistribution[t.action] ?? 0) + 1;
@@ -98,6 +112,7 @@ statsRouter.get("/", asyncHandler(async (_req, res) => {
       block: rate(traces.filter((t) => t.action === "BLOCK").length, total),
       escalation: rate(traces.filter((t) => t.action === "HUMAN_REVIEW").length, total),
     },
+    stageAverages,
     modeDistribution,
     actionDistribution,
   });

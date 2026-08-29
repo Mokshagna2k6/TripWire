@@ -1,0 +1,20 @@
+name: Keep Render awake
+
+# The Render free plan spins the server down after ~15 min idle; the next request
+# then eats a 50-130s cold start. Pinging /health every 10 min keeps it warm so a
+# real user never hits that. Free — GitHub-hosted runners, a few seconds each run.
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: curl /health
+        run: |
+          code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 120 \
+            https://tripwire-server.onrender.com/health)
+          echo "health check returned $code"
+          test "$code" = "200"

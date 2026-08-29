@@ -82,6 +82,28 @@ describe("DEEP mode Judge skip", () => {
     expect(provider.calls.generate).toBe(1);
   });
 
+  it("skips the Judge when skipExpensiveChecks is set, even in DEEP with a dirty response", async () => {
+    const provider = makeProvider();
+    const { judgeOutput, governanceTokens } = await runVerification(
+      {
+        domain: "general",
+        requestId: "req-skip",
+        originalPrompt: "Explain money laundering prevention.",
+        responseText: "This article explains how banks launder money detection works.",
+        mode: "DEEP",
+        regenerationCount: 0,
+        maxRetries: 2,
+        initialEvidence: cleanEvidence,
+        skipExpensiveChecks: true,
+      },
+      provider
+    );
+
+    expect(judgeOutput).toBeNull();
+    expect(provider.calls.generate).toBe(0);
+    expect(governanceTokens).toEqual({ input: 0, output: 0 });
+  });
+
   it("never calls the Judge outside DEEP mode regardless of grounding", async () => {
     const provider = makeProvider();
     const { judgeOutput } = await runVerification(

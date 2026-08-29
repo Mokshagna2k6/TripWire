@@ -109,6 +109,9 @@ export default function Inspector() {
   const [attachments, setAttachments] = useState([]);
   const [expectsJson, setExpectsJson] = useState(false);
   const [loading, setLoading] = useState(false);
+  // After a few seconds of waiting, hint that a cold free-tier server can take a
+  // while — so a slow first request doesn't read as "broken".
+  const [slowWait, setSlowWait] = useState(false);
   const [messages, setMessages] = useState([]);
   const [expandedTraceId, setExpandedTraceId] = useState(null);
   const [copiedId, setCopiedId] = useState(null);
@@ -168,6 +171,15 @@ export default function Inspector() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
+
+  useEffect(() => {
+    if (!loading) {
+      setSlowWait(false);
+      return;
+    }
+    const t = setTimeout(() => setSlowWait(true), 8000);
+    return () => clearTimeout(t);
+  }, [loading]);
 
   // Adjust textarea height
   useEffect(() => {
@@ -590,6 +602,14 @@ export default function Inspector() {
                                       </div>
                                     ))}
                                   </div>
+                                  {msg.result.timings && (
+                                    <div className="mt-2 flex flex-wrap gap-x-3 gap-y-0.5 text-2xs text-slate-400">
+                                      <span>retrieval {msg.result.timings.retrievalMs}ms</span>
+                                      <span>generation {msg.result.timings.generationMs}ms</span>
+                                      <span>verification {msg.result.timings.verificationMs}ms</span>
+                                      {msg.result.timings.auditMs > 0 && <span>audit {msg.result.timings.auditMs}ms</span>}
+                                    </div>
+                                  )}
                                 </div>
                               )}
 
@@ -649,9 +669,16 @@ export default function Inspector() {
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-600 text-white shrink-0 shadow-xs">
                 <ShieldCheck className="h-4 w-4 animate-pulse" />
               </div>
-              <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-xs font-medium text-slate-600 shadow-xs flex items-center gap-2">
-                <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent" />
-                <span>Intercepting & evaluating verification pipeline…</span>
+              <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-xs font-medium text-slate-600 shadow-xs">
+                <div className="flex items-center gap-2">
+                  <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent" />
+                  <span>Intercepting & evaluating verification pipeline…</span>
+                </div>
+                {slowWait && (
+                  <p className="mt-1.5 text-2xs text-slate-400">
+                    First request after a while can take up to a minute — the free-tier server is waking up.
+                  </p>
+                )}
               </div>
             </div>
           )}

@@ -1,10 +1,29 @@
 const BASE = `${import.meta.env.VITE_API_URL ?? ""}/api/v1`;
 
+// Long enough to cover a genuine cold start + a DEEP verification pass, short
+// enough that a truly hung request surfaces an error instead of spinning forever.
+const REQUEST_TIMEOUT_MS = 75_000;
+
 async function request(path, options) {
-  const res = await fetch(`${BASE}${path}`, {
-    ...options,
-    headers: { "Content-Type": "application/json", ...options?.headers },
-  });
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  let res;
+  try {
+    res = await fetch(`${BASE}${path}`, {
+      ...options,
+      signal: controller.signal,
+      headers: { "Content-Type": "application/json", ...options?.headers },
+    });
+  } catch (err) {
+    if (err.name === "AbortError") {
+      throw new Error(
+        "The gateway didn't respond in time. It may be waking from idle — wait a moment and try again."
+      );
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
   if (!res.ok && res.status !== 202 && res.status !== 403) {
     throw new Error(`request failed: ${res.status}`);
   }

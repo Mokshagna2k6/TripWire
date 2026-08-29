@@ -152,6 +152,33 @@ export default function Efficiency() {
         </p>
       </Card>
 
+      {/* Per-stage timing — where the wall-clock actually goes. */}
+      {stats.stageAverages && (
+        <Card className="border-slate-200 shadow-2xs">
+          <div className="flex items-center gap-2 border-b border-slate-100 pb-3 mb-4">
+            <Gauge className="h-4 w-4 text-indigo-600" />
+            <h3 className="text-sm font-bold text-slate-900">Average Latency by Stage</h3>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {[
+              ["Retrieval", stats.stageAverages.retrievalMs],
+              ["Generation", stats.stageAverages.generationMs],
+              ["Verification", stats.stageAverages.verificationMs],
+              ["Audit (blocking)", stats.stageAverages.auditMs],
+            ].map(([label, ms]) => (
+              <div key={label} className="rounded-xl border border-slate-200 bg-slate-50/50 p-3 text-center">
+                <p className="text-2xl font-extrabold text-slate-800 font-mono">{ms}ms</p>
+                <p className="text-2xs font-semibold text-slate-600 mt-1">{label}</p>
+              </div>
+            ))}
+          </div>
+          <p className="text-2xs text-slate-500 border-t border-slate-100 pt-3 mt-3">
+            Generation is the model call(s). Audit is only non-zero on the HUMAN_REVIEW path — every other
+            outcome writes its trace after the response is already sent.
+          </p>
+        </Card>
+      )}
+
       {/* Token split — the concrete answer to "what did governance actually cost?" */}
       <Card className="border-slate-200 shadow-2xs">
         <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">

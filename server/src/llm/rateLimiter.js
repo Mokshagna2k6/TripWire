@@ -1,4 +1,9 @@
-const MIN_INTERVAL_MS = 7000;
+// 3s/token with a burst capacity of 8 (below). The old 7s/token was far more
+// conservative than Gemini's real limits and serialized every multi-call request
+// (a DEEP pass makes 4-6 model calls) into 7s steps. Genuine 429s are still
+// absorbed by the retry/backoff + circuit breaker below.
+const MIN_INTERVAL_MS = 3000;
+const BUCKET_CAPACITY = 8;
 const MAX_RETRIES = 3;
 const BASE_BACKOFF_MS = 2000;
 const MAX_QUEUE_DEPTH = 50;
@@ -70,7 +75,7 @@ function sleep(ms) {
 }
 
 export function withRateLimit(provider, { minIntervalMs = MIN_INTERVAL_MS, maxRetries = MAX_RETRIES, maxQueueDepth = MAX_QUEUE_DEPTH, logger } = {}) {
-  const bucket = new TokenBucket(5, minIntervalMs);
+  const bucket = new TokenBucket(BUCKET_CAPACITY, minIntervalMs);
   let queueDepth = 0;
 
   // Circuit Breaker state

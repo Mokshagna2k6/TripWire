@@ -19,7 +19,15 @@ import { mapGeminiSafetyRatings } from "./geminiSafety.js";
 export const GEMINI_MODEL = "gemini-2.5-flash";
 const MODEL = GEMINI_MODEL;
 const DEFAULT_TIMEOUT_MS = 45_000;
-const DEFAULT_MAX_OUTPUT_TOKENS = 2_048;
+const DEFAULT_MAX_OUTPUT_TOKENS = 1_024;
+
+// gemini-2.5-flash "thinks" before answering by default, which adds seconds of
+// latency and hidden output tokens to every call — even trivial ones. A
+// governance gateway makes several model calls per user message, so that tax
+// multiplies. Budget 0 turns thinking off. The gateway's own verification layer
+// (SchemaX/UIS/CEG + the Judge) is the quality backstop, so the model doesn't
+// need to self-deliberate here.
+const NO_THINKING = { thinkingBudget: 0 };
 
 function withTimeout(promise, timeoutMs, operation) {
   let timer;
@@ -51,6 +59,7 @@ export class GeminiProvider {
         systemInstruction: opts.systemInstruction,
         temperature: opts.temperature ?? 0.4,
         maxOutputTokens: opts.maxOutputTokens ?? DEFAULT_MAX_OUTPUT_TOKENS,
+        thinkingConfig: NO_THINKING,
       },
     }), opts.timeoutMs ?? DEFAULT_TIMEOUT_MS, "Gemini generation");
     const text = res.text ?? "";
@@ -79,7 +88,7 @@ export class GeminiProvider {
           ],
         },
       ],
-      config: { temperature: 0 },
+      config: { temperature: 0, thinkingConfig: NO_THINKING },
     }), DEFAULT_TIMEOUT_MS, "Gemini transcription");
     return (res.text ?? "").trim();
   }
