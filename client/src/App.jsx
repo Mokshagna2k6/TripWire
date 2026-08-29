@@ -4,7 +4,6 @@ import {
   ShieldCheck,
   MessageSquarePlus,
   MessageSquare,
-  UserCheck,
   BarChart3,
   Gauge,
   FileSearch,
@@ -18,7 +17,6 @@ import {
 } from "lucide-react";
 import Inspector from "./pages/Inspector.jsx";
 import Policies from "./pages/Policies.jsx";
-import Review from "./pages/Review.jsx";
 import Feedback from "./pages/Feedback.jsx";
 import Efficiency from "./pages/Efficiency.jsx";
 import Audit from "./pages/Audit.jsx";
@@ -157,23 +155,6 @@ export default function App() {
               {sidebarOpen && <span>Chat & Inspector</span>}
             </NavLink>
 
-            <NavLink
-              to="/review"
-              className={({ isActive }) =>
-                `flex items-center ${
-                  sidebarOpen ? "gap-3 px-3 py-2" : "justify-center p-2.5"
-                } rounded-lg text-xs font-medium transition-colors ${
-                  isActive
-                    ? "bg-slate-100 text-slate-900 font-semibold"
-                    : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-                }`
-              }
-              title="Human Review Queue"
-              onClick={() => setMobileDrawerOpen(false)}
-            >
-              <UserCheck className="h-4 w-4 shrink-0 text-slate-500" />
-              {sidebarOpen && <span>Human Review</span>}
-            </NavLink>
 
             <NavLink
               to="/feedback"
@@ -343,7 +324,9 @@ export default function App() {
           <Route path="/settings" element={<Policies />} />
           {/* The sidebar links to /settings; keep /policies working as an alias. */}
           <Route path="/policies" element={<Navigate to="/settings" replace />} />
-          <Route path="/review" element={<Review />} />
+          {/* Human review is resolved inline in the chat now; keep the route as a
+              redirect so old links/bookmarks don't 404. */}
+          <Route path="/review" element={<Navigate to="/" replace />} />
           <Route path="/feedback" element={<Feedback />} />
           <Route path="/efficiency" element={<Efficiency />} />
           <Route path="/audit" element={<Audit />} />

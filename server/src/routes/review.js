@@ -23,7 +23,14 @@ reviewRouter.post("/:id/decision", asyncHandler(async (req, res) => {
 
   const review = await prisma.humanReview.findUnique({ where: { id: req.params.id }, include: { auditTrace: true } });
   if (!review) return res.status(404).json({ error: "not found" });
-  if (review.decision) return res.status(409).json({ error: "already decided" });
+  if (review.decision) {
+    // Already decided (double-click, or resolved elsewhere). Hand back the
+    // standing decision so the chat can settle on it instead of erroring.
+    return res.status(409).json({
+      error: "already decided",
+      review: { ...review, response: review.decision === "ALLOW" ? review.response : null },
+    });
+  }
 
   const { updated, feedback } = await prisma.$transaction(async (tx) => {
     const updated = await tx.humanReview.update({
