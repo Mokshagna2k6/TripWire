@@ -142,6 +142,23 @@ const DOCUMENTS = [
     authority: "medium",
     text: "Mutual fund investments are subject to market risk and past performance does not guarantee future returns. SEBI mandates that all mutual fund advertisements carry this disclosure prominently. Investors should read the scheme information document carefully before investing.",
   },
+  // The medical policy is the strictest one seeded, but it had no corpus behind
+  // it — so medical prompts were exercising no-evidence behaviour (spec 22) by
+  // accident rather than deep verification against real evidence (spec 38).
+  {
+    domain: "medical",
+    title: "Occupational Health Guidance for Employees",
+    source: "internal-occupational-health",
+    authority: "high",
+    text: "Employees reporting persistent fever above 38 degrees Celsius must consult the occupational health desk before returning to the workplace. This guidance covers workplace fitness assessment only and is not a substitute for diagnosis or treatment by a qualified physician. Medication dosage decisions must always be made by a licensed medical practitioner.",
+  },
+  {
+    domain: "medical",
+    title: "Employee Medical Leave and Escalation Policy",
+    source: "internal-hr-medical",
+    authority: "medium",
+    text: "Medical leave beyond three consecutive days requires a certificate from a registered practitioner. Requests involving prescription medication, dosage guidance, or treatment plans are outside the scope of this policy and must be escalated to a human reviewer. No automated system may issue clinical advice to an employee.",
+  },
 ];
 
 async function main() {
@@ -154,24 +171,48 @@ async function main() {
   }
   console.log(`seeded ${POLICIES.length} policies`);
 
-  for (const doc of DOCUMENTS) {
-    const existing = await prisma.evidenceDocument.findFirst({ where: { title: doc.title } });
-    if (existing) continue;
+  // Retrieval compares a runtime query embedding against these stored vectors, so
+  // a change to the embedder invalidates every chunk written by an earlier seed.
+  // Cosine similarity returns 0 on a dimension mismatch rather than erroring, so
+  // a stale corpus fails silently — detect it here and re-embed.
+  const expectedDims = (await provider.embed("dimension probe")).length;
 
-    const created = await prisma.evidenceDocument.create({
-      data: { domain: doc.domain, title: doc.title, source: doc.source, authority: doc.authority },
+  let created = 0;
+  let refreshed = 0;
+  for (const doc of DOCUMENTS) {
+    const existing = await prisma.evidenceDocument.findFirst({
+      where: { title: doc.title },
+      include: { chunks: { take: 1 } },
     });
 
-    // Chunk by sentence for finer-grained retrieval.
-    const sentences = doc.text.split(/(?<=[.!?])\s+/).filter(Boolean);
-    for (const sentence of sentences) {
-      const embedding = await provider.embed(sentence);
-      await prisma.evidenceChunk.create({
-        data: { documentId: created.id, text: sentence, embedding },
-      });
+    if (existing) {
+      const storedDims = existing.chunks[0]?.embedding?.length ?? 0;
+      if (storedDims === expectedDims) continue;
+      // Stale embeddings: drop the chunks and rebuild them against this document.
+      await prisma.evidenceChunk.deleteMany({ where: { documentId: existing.id } });
+      await embedInto(existing.id, doc.text);
+      refreshed++;
+      continue;
     }
+
+    const document = await prisma.evidenceDocument.create({
+      data: { domain: doc.domain, title: doc.title, source: doc.source, authority: doc.authority },
+    });
+    await embedInto(document.id, doc.text);
+    created++;
   }
-  console.log(`seeded ${DOCUMENTS.length} evidence documents`);
+  console.log(
+    `evidence documents: ${created} created, ${refreshed} re-embedded, ${DOCUMENTS.length - created - refreshed} already current`
+  );
+}
+
+/** Chunk by sentence for finer-grained retrieval, then embed each chunk. */
+async function embedInto(documentId, text) {
+  const sentences = text.split(/(?<=[.!?])\s+/).filter(Boolean);
+  for (const sentence of sentences) {
+    const embedding = await provider.embed(sentence);
+    await prisma.evidenceChunk.create({ data: { documentId, text: sentence, embedding } });
+  }
 }
 
 main()
