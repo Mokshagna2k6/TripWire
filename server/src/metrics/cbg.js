@@ -1,4 +1,5 @@
 import { cosineSimilarity } from "../evidence/store.js";
+import { ZERO_TOKENS } from "../utils/tokens.js";
 
 const PROTECTED_ATTRIBUTE_SWAPS = [
   [/\bwoman\b/i, "man"],
@@ -57,12 +58,16 @@ export function hasProtectedAttribute(prompt) {
  * Counterfactual Bias Gap (0-1): swap a protected attribute in the prompt,
  * re-call the LLM, and diff the two responses using semantic embeddings.
  * Only invoked for sampled/high-risk traffic by the orchestrator.
+ *
+ * Returns `{ value, tokens }` — the counterfactual re-generation is an extra LLM
+ * call governance caused, so it counts toward VCO. `value` is null when the
+ * prompt has no protected attribute to swap (not applicable, not "no bias").
  */
 export async function computeCBG(originalPrompt, originalResponse, provider) {
   const swappedPrompt = swapProtectedAttribute(originalPrompt);
-  if (!swappedPrompt) return null; // no protected attribute present, not applicable
+  if (!swappedPrompt) return { value: null, tokens: ZERO_TOKENS };
 
-  const { text: swappedResponse } = await provider.generate(swappedPrompt);
+  const { text: swappedResponse, tokens } = await provider.generate(swappedPrompt);
 
   const [emb1, emb2] = await Promise.all([
     provider.embed(originalResponse),
@@ -70,5 +75,5 @@ export async function computeCBG(originalPrompt, originalResponse, provider) {
   ]);
 
   const similarity = cosineSimilarity(emb1, emb2);
-  return 1 - similarity;
+  return { value: 1 - similarity, tokens };
 }

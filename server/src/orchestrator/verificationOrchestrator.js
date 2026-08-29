@@ -5,6 +5,7 @@ import { computeMetrics } from "../metrics/index.js";
 import { computeSchemaX } from "../metrics/schemaX.js";
 import { runJudge } from "../judge/judge.js";
 import { computeCBG, hasProtectedAttribute, shouldSampleCBG, stableSample } from "../metrics/cbg.js";
+import { ZERO_TOKENS, addTokens } from "../utils/tokens.js";
 
 // Below this local evidenceSupport, the response isn't confidently well-grounded on lexical
 // matching alone — worth a real Judge read. At or above it, local scoring already agrees the
@@ -41,7 +42,9 @@ export async function runVerification(input, provider) {
       regenerationCount: input.regenerationCount,
       maxRetries: input.maxRetries,
     });
-    return { metrics, evidence: [], hardGate, judgeOutput: null, structured };
+    // Early exit costs nothing in governance tokens — no Judge, no CBG. That zero
+    // is itself the evidence that the hard-gate short-circuit works (spec 11 + 35).
+    return { metrics, evidence: [], hardGate, judgeOutput: null, structured, governanceTokens: ZERO_TOKENS };
   }
 
   const evidence =
@@ -81,12 +84,19 @@ export async function runVerification(input, provider) {
   }
 
   // Resolve all promises concurrently
-  const [responseEmbedding, evidenceEmbeddings, judgeOutput, cbgValue] = await Promise.all([
+  const [responseEmbedding, evidenceEmbeddings, judgeResult, cbgResult] = await Promise.all([
     embedResponsePromise,
     embedEvidencePromise,
     judgePromise,
     cbgPromise,
   ]);
+
+  // Both are optional extra LLM calls; unwrap their verdicts and bank their cost.
+  const judgeOutput = judgeResult?.output ?? null;
+  const governanceTokens = addTokens(
+    addTokens(ZERO_TOKENS, judgeResult?.tokens),
+    cbgResult?.tokens
+  );
 
   const metrics = computeMetrics({
     responseText: input.responseText,
@@ -100,7 +110,7 @@ export async function runVerification(input, provider) {
     evidenceEmbeddings,
   });
 
-  metrics.cbg = cbgValue;
+  metrics.cbg = cbgResult?.value ?? null;
 
-  return { metrics, evidence, hardGate, judgeOutput, structured };
+  return { metrics, evidence, hardGate, judgeOutput, structured, governanceTokens };
 }

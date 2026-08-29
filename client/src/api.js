@@ -24,6 +24,16 @@ export const api = {
 
   feedbackStats: () => request("/feedback/stats"),
 
+  stats: () => request("/stats"),
+
+  listAudit: (params = {}) => {
+    const query = new URLSearchParams(
+      Object.entries(params).filter(([, v]) => v)
+    ).toString();
+    return request(`/audit${query ? `?${query}` : ""}`);
+  },
+  getAudit: (id) => request(`/audit/${id}`),
+
   transcribe: (audio, mimeType) =>
     request("/transcribe", { method: "POST", body: JSON.stringify({ audio, mimeType }) }),
 };
