@@ -22,11 +22,19 @@ function safeParse(text) {
   }
 }
 
-/** DEEP-mode only: an AI-Judge pass over the response for hallucination risk and safety severity (SHS Layer 2). */
+/**
+ * DEEP-mode only: an AI-Judge pass over the response for hallucination risk and
+ * safety severity (SHS Layer 2).
+ *
+ * Returns `{ output, tokens }` rather than the bare verdict — the Judge is an
+ * extra LLM call TripWire chose to make, so its cost belongs in the governance
+ * bucket that VCO is computed from. Keeping `tokens` outside `output` leaves the
+ * audited judgeOutput shape unchanged.
+ */
 export async function runJudge(response, evidence, provider) {
-  const { text } = await provider.generate(buildPrompt(response, evidence), {
+  const { text, tokens } = await provider.generate(buildPrompt(response, evidence), {
     systemInstruction: JUDGE_SYSTEM_PROMPT,
     temperature: 0,
   });
-  return safeParse(text);
+  return { output: safeParse(text), tokens };
 }

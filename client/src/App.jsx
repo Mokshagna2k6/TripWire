@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
-import { NavLink, Route, Routes, useNavigate } from "react-router-dom";
+import { Navigate, NavLink, Route, Routes, useNavigate } from "react-router-dom";
 import {
   ShieldCheck,
   MessageSquarePlus,
   MessageSquare,
   UserCheck,
   BarChart3,
+  Gauge,
+  FileSearch,
   Settings,
   PanelLeftClose,
   PanelLeftOpen,
@@ -18,6 +20,8 @@ import Inspector from "./pages/Inspector.jsx";
 import Policies from "./pages/Policies.jsx";
 import Review from "./pages/Review.jsx";
 import Feedback from "./pages/Feedback.jsx";
+import Efficiency from "./pages/Efficiency.jsx";
+import Audit from "./pages/Audit.jsx";
 import {
   loadSessions,
   getActiveSessionId,
@@ -188,6 +192,42 @@ export default function App() {
               <BarChart3 className="h-4 w-4 shrink-0 text-slate-500" />
               {sidebarOpen && <span>Feedback & Metrics</span>}
             </NavLink>
+
+            <NavLink
+              to="/efficiency"
+              className={({ isActive }) =>
+                `flex items-center ${
+                  sidebarOpen ? "gap-3 px-3 py-2" : "justify-center p-2.5"
+                } rounded-lg text-xs font-medium transition-colors ${
+                  isActive
+                    ? "bg-slate-100 text-slate-900 font-semibold"
+                    : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                }`
+              }
+              title="Efficiency & Verification Cost"
+              onClick={() => setMobileDrawerOpen(false)}
+            >
+              <Gauge className="h-4 w-4 shrink-0 text-slate-500" />
+              {sidebarOpen && <span>Efficiency & Cost</span>}
+            </NavLink>
+
+            <NavLink
+              to="/audit"
+              className={({ isActive }) =>
+                `flex items-center ${
+                  sidebarOpen ? "gap-3 px-3 py-2" : "justify-center p-2.5"
+                } rounded-lg text-xs font-medium transition-colors ${
+                  isActive
+                    ? "bg-slate-100 text-slate-900 font-semibold"
+                    : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                }`
+              }
+              title="Audit & Execution Trace"
+              onClick={() => setMobileDrawerOpen(false)}
+            >
+              <FileSearch className="h-4 w-4 shrink-0 text-slate-500" />
+              {sidebarOpen && <span>Audit Trace</span>}
+            </NavLink>
           </nav>
 
           {/* Library / Previous Chats Section */}
@@ -301,9 +341,12 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Inspector />} />
           <Route path="/settings" element={<Policies />} />
-          <Route path="/policies" element={<Policies />} />
+          {/* The sidebar links to /settings; keep /policies working as an alias. */}
+          <Route path="/policies" element={<Navigate to="/settings" replace />} />
           <Route path="/review" element={<Review />} />
           <Route path="/feedback" element={<Feedback />} />
+          <Route path="/efficiency" element={<Efficiency />} />
+          <Route path="/audit" element={<Audit />} />
         </Routes>
       </main>
     </div>
