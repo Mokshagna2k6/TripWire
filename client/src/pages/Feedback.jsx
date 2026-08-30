@@ -128,30 +128,30 @@ export default function Feedback() {
             <CheckCircle className="h-4 w-4 text-indigo-600" />
             <h3 className="text-sm font-bold text-slate-900">Confusion Counts & Classification Matrix</h3>
           </div>
-          <span className="text-2xs text-slate-400 font-mono">Sample size: {stats.total}</span>
+          <span className="text-2xs tabular-nums text-slate-400">Sample size: {stats.total}</span>
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-4 text-center">
-            <p className="text-3xl font-extrabold text-emerald-700 font-mono">{stats.truePositive}</p>
+            <p className="font-display text-3xl font-bold tabular-nums text-emerald-700">{stats.truePositive}</p>
             <p className="text-xs font-semibold text-emerald-900 mt-1">True Positive</p>
             <p className="text-2xs text-emerald-600">Correctly Flagged</p>
           </div>
 
           <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-4 text-center">
-            <p className="text-3xl font-extrabold text-emerald-700 font-mono">{stats.trueNegative}</p>
+            <p className="font-display text-3xl font-bold tabular-nums text-emerald-700">{stats.trueNegative}</p>
             <p className="text-xs font-semibold text-emerald-900 mt-1">True Negative</p>
             <p className="text-2xs text-emerald-600">Correctly Allowed</p>
           </div>
 
           <div className="rounded-xl border border-rose-200 bg-rose-50/50 p-4 text-center">
-            <p className="text-3xl font-extrabold text-rose-700 font-mono">{stats.falsePositive}</p>
+            <p className="font-display text-3xl font-bold tabular-nums text-rose-700">{stats.falsePositive}</p>
             <p className="text-xs font-semibold text-rose-900 mt-1">False Positive</p>
             <p className="text-2xs text-rose-600">System ALLOW → Human BLOCK</p>
           </div>
 
           <div className="rounded-xl border border-rose-200 bg-rose-50/50 p-4 text-center">
-            <p className="text-3xl font-extrabold text-rose-700 font-mono">{stats.falseNegative}</p>
+            <p className="font-display text-3xl font-bold tabular-nums text-rose-700">{stats.falseNegative}</p>
             <p className="text-xs font-semibold text-rose-900 mt-1">False Negative</p>
             <p className="text-2xs text-rose-600">System BLOCK → Human ALLOW</p>
           </div>

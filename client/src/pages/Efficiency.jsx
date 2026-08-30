@@ -158,7 +158,7 @@ export default function Efficiency() {
               ["Audit (blocking)", stats.stageAverages.auditMs],
             ].map(([label, ms]) => (
               <div key={label} className="rounded-xl border border-slate-200 bg-slate-50/50 p-3 text-center">
-                <p className="text-2xl font-extrabold text-slate-800 font-mono">{ms}ms</p>
+                <p className="font-display text-2xl font-bold tabular-nums text-slate-800">{ms}ms</p>
                 <p className="text-2xs font-semibold text-slate-600 mt-1">{label}</p>
               </div>
             ))}
@@ -177,7 +177,7 @@ export default function Efficiency() {
             <Coins className="h-4 w-4 text-indigo-600" />
             <h3 className="text-sm font-bold text-slate-900">Token Cost: Baseline vs Governance</h3>
           </div>
-          <span className="text-2xs text-slate-400 font-mono">
+          <span className="text-2xs tabular-nums text-slate-400">
             VCO = governance ÷ baseline = {pct(stats.vco)}
           </span>
         </div>
@@ -226,7 +226,7 @@ export default function Efficiency() {
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
           {Object.entries(stats.actionDistribution).map(([action, count]) => (
             <div key={action} className="rounded-xl border border-slate-200 bg-slate-50/50 p-3 text-center">
-              <p className="text-2xl font-extrabold text-slate-800 font-mono">{count}</p>
+              <p className="font-display text-2xl font-bold tabular-nums text-slate-800">{count}</p>
               <p className="text-2xs font-semibold text-slate-600 mt-1">{action}</p>
               <p className="text-2xs text-slate-400">{pct(count / stats.total)}</p>
             </div>
