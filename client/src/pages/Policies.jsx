@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Sliders, ShieldAlert, Check, RefreshCw, Layers } from "lucide-react";
 import { api } from "../api.js";
-import { Card, Badge, Button } from "../components/ui.jsx";
+import { Card, Badge, Button, PageHeader } from "../components/ui.jsx";
 
 export default function Policies() {
   const [policies, setPolicies] = useState([]);
@@ -72,18 +72,16 @@ export default function Policies() {
 
   return (
     <div className="h-full overflow-y-auto p-6 space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-        <div>
-          <h2 className="text-base font-bold text-slate-900">Governance Policies & Thresholds</h2>
-          <p className="text-xs text-slate-500">
-            Define domain-specific risk tolerance, instant hard-gate kill switches, and adaptive action triggers.
-          </p>
-        </div>
-        <Button variant="outline" size="sm" onClick={load} className="flex items-center gap-1.5 self-start">
-          <RefreshCw className="h-3 w-3" />
-          Refresh
-        </Button>
-      </div>
+      <PageHeader
+        title="Governance Policies & Thresholds"
+        subtitle="Define domain-specific risk tolerance, instant hard-gate kill switches, and adaptive action triggers."
+        actions={
+          <Button variant="outline" size="sm" onClick={load} className="flex items-center gap-1.5">
+            <RefreshCw className="h-3 w-3" />
+            Refresh
+          </Button>
+        }
+      />
 
       <div className="space-y-5">
         {policies.map((p) => (

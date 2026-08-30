@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { UserCheck, CheckCircle2, XCircle, Clock, ShieldAlert, Check, RefreshCw } from "lucide-react";
 import { api } from "../api.js";
-import { Card, Badge, Button } from "../components/ui.jsx";
+import { Card, Badge, Button, PageHeader } from "../components/ui.jsx";
 
 export default function Review() {
   const [reviews, setReviews] = useState([]);
@@ -27,18 +27,16 @@ export default function Review() {
 
   return (
     <div className="h-full overflow-y-auto p-6 space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-        <div>
-          <h2 className="text-base font-bold text-slate-900">Human Moderation & Review Queue</h2>
-          <p className="text-xs text-slate-500">
-            Escalated LLM outputs requiring manual verification and safety audit before release.
-          </p>
-        </div>
-        <Button variant="outline" size="sm" onClick={load} className="flex items-center gap-1.5 self-start">
-          <RefreshCw className="h-3 w-3" />
-          Refresh Queue
-        </Button>
-      </div>
+      <PageHeader
+        title="Human Moderation & Review Queue"
+        subtitle="Escalated LLM outputs requiring manual verification and safety audit before release."
+        actions={
+          <Button variant="outline" size="sm" onClick={load} className="flex items-center gap-1.5">
+            <RefreshCw className="h-3 w-3" />
+            Refresh Queue
+          </Button>
+        }
+      />
 
       {actionSuccess && (
         <div className="flex items-center gap-2 rounded-lg bg-emerald-50 border border-emerald-200 px-4 py-2.5 text-xs font-semibold text-emerald-800 animate-fade-in">

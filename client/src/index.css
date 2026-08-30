@@ -6,6 +6,12 @@
   body {
     @apply bg-slate-50 text-slate-900 font-sans selection:bg-indigo-100 selection:text-indigo-900;
   }
+
+  /* Architectural Precision — geometric Outfit for every heading, with the
+     "locked in" negative tracking the design system calls for. */
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display tracking-tight;
+  }
 }
 
 /* Custom subtle scrollbar */

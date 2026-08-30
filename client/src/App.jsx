@@ -127,7 +127,7 @@ export default function App() {
             onClick={handleStartNewChat}
             className={`flex w-full items-center shrink-0 ${
               sidebarOpen ? "gap-2.5 px-3.5 py-2.5 justify-start" : "justify-center p-2.5"
-            } rounded-xl bg-slate-900 text-white text-xs font-semibold shadow-xs hover:bg-slate-800 transition-all active:scale-[0.98]`}
+            } rounded-xl bg-brand-600 text-white text-xs font-semibold shadow-xs hover:bg-brand-700 transition-all active:scale-[0.98]`}
             title="Start new chat"
           >
             <MessageSquarePlus className="h-4 w-4 shrink-0" />
@@ -144,7 +144,7 @@ export default function App() {
                   sidebarOpen ? "gap-3 px-3 py-2" : "justify-center p-2.5"
                 } rounded-lg text-xs font-medium transition-colors ${
                   isActive && !activeSessionId
-                    ? "bg-slate-100 text-slate-900 font-semibold"
+                    ? "bg-indigo-50 text-indigo-700 font-semibold"
                     : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
                 }`
               }
@@ -163,7 +163,7 @@ export default function App() {
                   sidebarOpen ? "gap-3 px-3 py-2" : "justify-center p-2.5"
                 } rounded-lg text-xs font-medium transition-colors ${
                   isActive
-                    ? "bg-slate-100 text-slate-900 font-semibold"
+                    ? "bg-indigo-50 text-indigo-700 font-semibold"
                     : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
                 }`
               }
@@ -181,7 +181,7 @@ export default function App() {
                   sidebarOpen ? "gap-3 px-3 py-2" : "justify-center p-2.5"
                 } rounded-lg text-xs font-medium transition-colors ${
                   isActive
-                    ? "bg-slate-100 text-slate-900 font-semibold"
+                    ? "bg-indigo-50 text-indigo-700 font-semibold"
                     : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
                 }`
               }
@@ -199,7 +199,7 @@ export default function App() {
                   sidebarOpen ? "gap-3 px-3 py-2" : "justify-center p-2.5"
                 } rounded-lg text-xs font-medium transition-colors ${
                   isActive
-                    ? "bg-slate-100 text-slate-900 font-semibold"
+                    ? "bg-indigo-50 text-indigo-700 font-semibold"
                     : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
                 }`
               }
@@ -233,7 +233,7 @@ export default function App() {
                         onClick={() => handleSelectSession(s.id)}
                         className={`group relative flex items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-xs transition-colors cursor-pointer ${
                           isSelected
-                            ? "bg-slate-100 text-slate-900 font-semibold"
+                            ? "bg-indigo-50 text-indigo-700 font-semibold"
                             : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
                         }`}
                       >
@@ -276,7 +276,7 @@ export default function App() {
                 sidebarOpen ? "gap-3 px-3 py-2" : "justify-center p-2.5"
               } rounded-lg text-xs font-medium transition-colors ${
                 isActive
-                  ? "bg-slate-100 text-slate-900 font-semibold"
+                  ? "bg-indigo-50 text-indigo-700 font-semibold"
                   : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
               }`
             }

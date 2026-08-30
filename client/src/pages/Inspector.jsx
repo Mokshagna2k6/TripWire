@@ -459,12 +459,12 @@ export default function Inspector() {
         <div className="mx-auto max-w-3xl space-y-6">
           {/* Empty State: Gemini-Style Greeting */}
           {messages.length === 0 && (
-            <div className="flex flex-col items-center justify-center min-h-[50vh] text-center space-y-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-50 border border-indigo-100 text-indigo-600 shadow-2xs">
-                <ShieldCheck className="h-6 w-6" />
+            <div className="flex flex-col items-center justify-center min-h-[50vh] text-center space-y-4">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-600 text-white">
+                <ShieldCheck className="h-7 w-7" />
               </div>
-              <h2 className="text-2xl font-bold tracking-tight text-slate-800">TripWire Trust Gateway</h2>
-              <p className="text-sm text-slate-500 max-w-md">
+              <h2 className="font-display text-3xl font-bold tracking-tight text-slate-900">TripWire Trust Gateway</h2>
+              <p className="text-[15px] leading-relaxed text-slate-500 max-w-md">
                 Type any prompt below. TripWire will intercept, execute adaptive verification against policy rules, and gate the response.
               </p>
             </div>
@@ -777,8 +777,8 @@ export default function Inspector() {
           {/* Demo scenarios (spec 38) — one click each, only offered on an empty
               composer so they never overwrite something being typed. */}
           {!input && !loading && (
-            <div className="flex flex-wrap items-center gap-1.5 pb-2">
-              <span className="text-2xs font-semibold uppercase tracking-wider text-slate-400">Demo:</span>
+            <div className="flex flex-wrap items-center gap-2 pb-3">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Demo</span>
               {DEMO_SCENARIOS.map((scenario) => (
                 <button
                   key={scenario.label}
@@ -788,10 +788,12 @@ export default function Inspector() {
                     setInput(scenario.prompt);
                   }}
                   title={scenario.note}
-                  className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-2xs font-medium text-slate-600 hover:border-slate-300 hover:bg-slate-50 transition-colors"
+                  className="group flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition-colors hover:border-brand-400 hover:bg-brand-50/50"
                 >
                   {scenario.label}
-                  <span className="font-mono text-slate-400">→ {scenario.expect}</span>
+                  <span className="font-mono text-[10px] font-semibold uppercase tracking-wider text-slate-400 transition-colors group-hover:text-brand-600">
+                    → {scenario.expect}
+                  </span>
                 </button>
               ))}
             </div>
@@ -913,7 +915,7 @@ export default function Inspector() {
                 disabled={!canSubmit || loading}
                 className={`flex h-8 w-8 items-center justify-center rounded-full transition-all ${
                   canSubmit && !loading
-                    ? "bg-slate-900 text-white shadow-xs hover:bg-slate-800 active:scale-95"
+                    ? "bg-brand-600 text-white shadow-xs hover:bg-brand-700 active:scale-95"
                     : "bg-slate-100 text-slate-300 cursor-not-allowed"
                 }`}
                 title="Send Prompt"
