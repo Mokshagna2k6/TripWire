@@ -51,6 +51,8 @@ function toneFor(value, max, higherIsBetter) {
   return "text-rose-600";
 }
 
+const SECTION_LABEL = "text-2xs font-bold uppercase tracking-wider text-slate-400";
+
 function MetricTile({ def, metrics }) {
   const raw = def.accessor ? def.accessor(metrics) : metrics[def.key];
 
@@ -58,25 +60,26 @@ function MetricTile({ def, metrics }) {
   // every response — spec point 18. Null means "not sampled", not "zero bias".
   if (raw === null || raw === undefined) {
     return (
-      <div className="rounded-lg bg-white border border-dashed border-slate-200 px-2.5 py-1.5">
+      <div className="rounded-lg border border-dashed border-slate-200 bg-white px-3 py-2">
         <div className="flex items-center justify-between gap-2">
-          <span className="font-mono text-2xs font-bold text-slate-500">{def.label}</span>
-          <span className="text-2xs text-slate-400 italic shrink-0">not sampled</span>
+          <span className="text-xs font-semibold text-slate-500">{def.label}</span>
+          <span className="shrink-0 text-2xs italic text-slate-400">not sampled</span>
         </div>
+        {def.hint && <div className="mt-0.5 truncate text-2xs text-slate-400">{def.hint}</div>}
       </div>
     );
   }
 
   return (
-    <div className="rounded-lg bg-white border border-slate-200 px-2.5 py-1.5 shadow-2xs" title={def.hint}>
+    <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 shadow-2xs" title={def.hint}>
       <div className="flex items-center justify-between gap-2">
-        <span className="font-mono text-2xs font-bold text-slate-700">{def.label}</span>
-        <span className={`font-mono text-xs font-semibold shrink-0 ${toneFor(raw, def.max, def.higherIsBetter)}`}>
+        <span className="text-xs font-semibold text-slate-700">{def.label}</span>
+        <span className={`shrink-0 text-sm font-bold tabular-nums ${toneFor(raw, def.max, def.higherIsBetter)}`}>
           {raw.toFixed(2)}
-          <span className="text-slate-300 font-normal">/{def.max}</span>
+          <span className="ml-0.5 text-2xs font-medium text-slate-400">/ {def.max}</span>
         </span>
       </div>
-      {def.hint && <div className="text-2xs text-slate-400 truncate">{def.hint}</div>}
+      {def.hint && <div className="mt-0.5 truncate text-2xs text-slate-400">{def.hint}</div>}
     </div>
   );
 }
@@ -90,10 +93,10 @@ function SchemaXBreakdown({ schemaX }) {
     ["SC", schemaX.schemaCompliance, "0.25"],
   ];
   return (
-    <div className="rounded-lg bg-white border border-slate-200 px-3 py-2 shadow-2xs">
-      <div className="flex items-center justify-between text-2xs text-slate-400 mb-1.5">
-        <span className="font-mono">SchemaX = 0.5(ES) + 0.25(SQ) + 0.25(SC)</span>
-        <span className="font-mono text-slate-500">
+    <div className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 shadow-2xs">
+      <div className="mb-2 flex items-center justify-between text-2xs text-slate-400">
+        <span className="font-semibold">SchemaX = 0.5·ES + 0.25·SQ + 0.25·SC</span>
+        <span className="tabular-nums text-slate-500">
           {schemaX.supportedClaims}/{schemaX.totalClaims} claims supported
         </span>
       </div>
@@ -101,12 +104,12 @@ function SchemaXBreakdown({ schemaX }) {
         {parts.map(([name, value, weight]) => (
           <div key={name} className="flex-1">
             <div className="flex items-baseline justify-between">
-              <span className="font-mono text-2xs font-bold text-slate-600">{name}</span>
-              <span className="font-mono text-2xs text-slate-300">×{weight}</span>
+              <span className="text-2xs font-bold text-slate-600">{name}</span>
+              <span className="text-2xs text-slate-300">×{weight}</span>
             </div>
-            <div className="font-mono text-xs font-semibold text-indigo-600">{value.toFixed(2)}</div>
-            <div className="mt-0.5 h-1 rounded-full bg-slate-100">
-              <div className="h-1 rounded-full bg-indigo-500" style={{ width: `${value * 100}%` }} />
+            <div className="text-xs font-bold tabular-nums text-brand-700">{value.toFixed(2)}</div>
+            <div className="mt-1 h-1 rounded-full bg-slate-100">
+              <div className="h-1 rounded-full bg-brand-500" style={{ width: `${value * 100}%` }} />
             </div>
           </div>
         ))}
@@ -119,14 +122,12 @@ export default function MetricsPanel({ metrics }) {
   if (!metrics) return null;
   return (
     <div className="space-y-3">
-      <h4 className="text-2xs font-semibold uppercase tracking-wider text-slate-400">
-        10 Core Governance Metrics + Auxiliary
-      </h4>
+      <h4 className={SECTION_LABEL}>10 Core Governance Metrics + Auxiliary</h4>
       <SchemaXBreakdown schemaX={metrics.schemaX} />
       {GROUPS.map((group) => (
         <div key={group.title}>
-          <div className="text-2xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">{group.title}</div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          <div className={`${SECTION_LABEL} mb-1.5`}>{group.title}</div>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             {group.metrics.map((def) => (
               <MetricTile key={def.key} def={def} metrics={metrics} />
             ))}

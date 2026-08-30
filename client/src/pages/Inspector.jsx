@@ -533,8 +533,8 @@ export default function Inspector() {
                         {/* Gateway Status Header */}
                         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
                           <div className="flex items-center gap-2">
-                            <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                              Verdict:
+                            <span className="text-2xs font-bold uppercase tracking-wider text-slate-400">
+                              Verdict
                             </span>
                             <Badge tone={msg.result.action} showDot>
                               {msg.result.action}
@@ -545,7 +545,7 @@ export default function Inspector() {
                           </div>
 
                           <div className="flex items-center gap-2">
-                            <span className="text-2xs text-slate-400 font-mono">
+                            <span className="text-2xs tabular-nums text-slate-400">
                               {msg.result.policyName && `Policy: ${msg.result.policyName} · `}
                               Mode: {msg.result.preRiskMode}
                             </span>
@@ -616,8 +616,8 @@ export default function Inspector() {
                         {/* Trigger Reasons */}
                         {msg.result.reasons && msg.result.reasons.length > 0 && (
                           <div className="rounded-lg bg-slate-50/70 border border-slate-100 p-3">
-                            <span className="text-2xs font-semibold uppercase tracking-wider text-slate-400 block mb-1">
-                              Violation Triggers:
+                            <span className="text-2xs font-bold uppercase tracking-wider text-slate-400 block mb-1">
+                              Violation Triggers
                             </span>
                             <ul className="space-y-1">
                               {msg.result.reasons.map((r, i) => (
@@ -657,7 +657,7 @@ export default function Inspector() {
                                   is measured rather than assumed (spec 35/36). */}
                               {msg.result.tokens && (
                                 <div>
-                                  <h4 className="text-2xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
+                                  <h4 className="text-2xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
                                     Verification Cost
                                   </h4>
                                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -671,8 +671,8 @@ export default function Inspector() {
                                         key={label}
                                         className="rounded-lg bg-white border border-slate-200 px-2.5 py-1.5 shadow-2xs"
                                       >
-                                        <div className="text-2xs text-slate-400">{label}</div>
-                                        <div className="font-mono text-xs font-semibold text-slate-700">{value}</div>
+                                        <div className="text-2xs font-medium text-slate-400">{label}</div>
+                                        <div className="text-sm font-bold tabular-nums text-slate-800">{value}</div>
                                       </div>
                                     ))}
                                   </div>
@@ -692,7 +692,7 @@ export default function Inspector() {
                               {/* Evidence Chunks */}
                               {msg.result.evidence && msg.result.evidence.length > 0 && (
                                 <div>
-                                  <h4 className="text-2xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
+                                  <h4 className="text-2xs font-bold uppercase tracking-wider text-slate-400 mb-2">
                                     Retrieved Evidence
                                   </h4>
                                   <div className="space-y-1.5">
@@ -701,10 +701,10 @@ export default function Inspector() {
                                         key={i}
                                         className="rounded-lg bg-white border border-slate-200 p-2 text-2xs text-slate-600"
                                       >
-                                        <div className="flex items-center justify-between font-mono text-slate-400 mb-1">
-                                          <span>[{ev.source}]</span>
-                                          <span className="text-indigo-600 font-semibold">
-                                            sim={ev.similarity.toFixed(2)}
+                                        <div className="flex items-center justify-between text-slate-400 mb-1">
+                                          <span className="font-medium">{ev.source}</span>
+                                          <span className="font-bold tabular-nums text-brand-700">
+                                            sim {ev.similarity.toFixed(2)}
                                           </span>
                                         </div>
                                         <p>{ev.text}</p>
@@ -791,7 +791,7 @@ export default function Inspector() {
                   className="group flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition-colors hover:border-brand-400 hover:bg-brand-50/50"
                 >
                   {scenario.label}
-                  <span className="font-mono text-[10px] font-semibold uppercase tracking-wider text-slate-400 transition-colors group-hover:text-brand-600">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 transition-colors group-hover:text-brand-600">
                     → {scenario.expect}
                   </span>
                 </button>

@@ -33,6 +33,16 @@ export default {
         brand,
         indigo: brand,
       },
+      // `text-2xs` is used throughout the dashboard for micro-labels but was never
+      // defined, so it silently inherited whatever size an ancestor set — the main
+      // reason the metric panels read as inconsistent. Pin it to a real 11px step.
+      fontSize: {
+        "2xs": ["0.6875rem", { lineHeight: "0.875rem" }],
+      },
+      boxShadow: {
+        "2xs": "0 1px 1px 0 rgb(15 23 42 / 0.03)",
+        xs: "0 1px 2px 0 rgb(15 23 42 / 0.04)",
+      },
       borderRadius: {
         // Soft-Precision: sharper than the default consumer pill look.
         lg: "0.375rem",
