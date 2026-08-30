@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { FileSearch, RefreshCw, Search, X } from "lucide-react";
 import { api } from "../api.js";
-import { Card, Badge, Button, Table } from "../components/ui.jsx";
+import { Card, Badge, Button, Table, PageHeader } from "../components/ui.jsx";
 import MetricsPanel from "../components/MetricsPanel.jsx";
 
 const ACTIONS = ["ALLOW", "EDIT_CLARIFY", "REGENERATE", "BLOCK", "HUMAN_REVIEW"];
@@ -60,18 +60,16 @@ export default function Audit() {
 
   return (
     <div className="h-full overflow-y-auto p-6 space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-        <div>
-          <h2 className="text-base font-bold text-slate-900">Audit & Execution Trace</h2>
-          <p className="text-xs text-slate-500">
-            Every request creates a trace. Select one to reconstruct exactly why the gateway decided what it did.
-          </p>
-        </div>
-        <Button variant="outline" size="sm" onClick={load} className="flex items-center gap-1.5 self-start">
-          <RefreshCw className="h-3 w-3" />
-          Refresh
-        </Button>
-      </div>
+      <PageHeader
+        title="Audit & Execution Trace"
+        subtitle="Every request creates a trace. Select one to reconstruct exactly why the gateway decided what it did."
+        actions={
+          <Button variant="outline" size="sm" onClick={load} className="flex items-center gap-1.5">
+            <RefreshCw className="h-3 w-3" />
+            Refresh
+          </Button>
+        }
+      />
 
       {/* Filters live in one row above the table. */}
       <div className="flex flex-wrap items-center gap-2">

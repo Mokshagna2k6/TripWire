@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Bar, BarChart, Cell, LabelList, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Gauge, Layers, Coins, RefreshCw } from "lucide-react";
 import { api } from "../api.js";
-import { Card, Button } from "../components/ui.jsx";
+import { Card, Button, PageHeader, StatCard } from "../components/ui.jsx";
 
 /**
  * Verification mode palette. The obvious choice was to reuse the mode badge
@@ -19,14 +19,8 @@ function pct(value) {
   return `${((value ?? 0) * 100).toFixed(1)}%`;
 }
 
-function StatTile({ label, value, sub, tone = "text-slate-900" }) {
-  return (
-    <Card className="p-4 border-slate-200">
-      <span className="text-2xs font-semibold uppercase tracking-wider text-slate-400">{label}</span>
-      <p className={`text-xl font-bold font-mono mt-1 ${tone}`}>{value}</p>
-      <span className="text-2xs text-slate-500">{sub}</span>
-    </Card>
-  );
+function StatTile({ label, value, unit, sub, tone = "text-slate-900" }) {
+  return <StatCard label={label} value={value} unit={unit} sub={sub} tone={tone} />;
 }
 
 const TOOLTIP_STYLE = {
@@ -88,23 +82,20 @@ export default function Efficiency() {
 
   return (
     <div className="h-full overflow-y-auto p-6 space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-        <div>
-          <h2 className="text-base font-bold text-slate-900">Efficiency & Verification Cost</h2>
-          <p className="text-xs text-slate-500">
-            Latency percentiles, verification cost overhead, and how adaptively the gateway is spending compute.
-            Window: last {stats.total} of {stats.sampleWindow} requests.
-          </p>
-        </div>
-        <Button variant="outline" size="sm" onClick={load} className="flex items-center gap-1.5 self-start">
-          <RefreshCw className="h-3 w-3" />
-          Refresh
-        </Button>
-      </div>
+      <PageHeader
+        title="Efficiency & Verification Cost"
+        subtitle={`Latency percentiles, verification cost overhead, and how adaptively the gateway is spending compute. Window: last ${stats.total} of ${stats.sampleWindow} requests.`}
+        actions={
+          <Button variant="outline" size="sm" onClick={load} className="flex items-center gap-1.5">
+            <RefreshCw className="h-3 w-3" />
+            Refresh
+          </Button>
+        }
+      />
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        <StatTile label="P50 Latency" value={`${stats.latency.p50}ms`} sub="Median end-to-end" />
-        <StatTile label="P95 Latency" value={`${stats.latency.p95}ms`} sub={`Max ${stats.latency.max}ms`} />
+        <StatTile label="P50 Latency" value={stats.latency.p50} unit="ms" sub="Median end-to-end" />
+        <StatTile label="P95 Latency" value={stats.latency.p95} unit="ms" sub={`Max ${stats.latency.max}ms`} />
         <StatTile
           label="VCO"
           value={pct(stats.vco)}
